@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, FileText, Network, RefreshCw, BarChart3, Settings, ArrowLeft, Plus, Sparkles } from "lucide-react";
-import { Tutorial, useTutorial } from "@/components/Tutorial";
 
 const sidebarItems = [
   { icon: Home, label: "Home", path: "/dashboard", active: true },
@@ -26,7 +25,6 @@ const getStoredConcepts = () => {
 };
 
 const Dashboard = () => {
-  const { showTutorial, completeTutorial } = useTutorial();
   const [notes, setNotes] = useState<any[]>([]);
   const [concepts, setConcepts] = useState<string[]>([]);
 
@@ -39,9 +37,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Tutorial Overlay */}
-      {showTutorial && <Tutorial onComplete={completeTutorial} />}
-
       {/* Sidebar */}
       <aside className="w-64 bg-card/50 border-r border-border/50 p-6">
         <div className="flex items-center gap-2 mb-8">

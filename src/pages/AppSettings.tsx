@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, FileText, Network, RefreshCw, BarChart3, Settings, ArrowLeft } from "lucide-react";
+import { Home, FileText, Network, RefreshCw, BarChart3, Settings, ArrowLeft, RotateCcw, Trash2, HelpCircle } from "lucide-react";
 
 const sidebarItems = [
   { icon: Home, label: "Home", path: "/dashboard" },
@@ -13,21 +14,25 @@ const sidebarItems = [
 
 const settingsOptions = [
   { 
+    id: "reduce-prompts",
     label: "Reduce AI prompts", 
     description: "Show fewer suggestions while you work",
     enabled: false 
   },
   { 
+    id: "focus-mode",
     label: "Focus mode", 
     description: "Minimize distractions during note-taking",
     enabled: true 
   },
   { 
+    id: "motion",
     label: "Motion intensity", 
     description: "Adjust animation speeds throughout the app",
     enabled: true 
   },
   { 
+    id: "contrast",
     label: "High contrast", 
     description: "Increase visibility for better readability",
     enabled: false 
@@ -35,6 +40,32 @@ const settingsOptions = [
 ];
 
 const AppSettings = () => {
+  const navigate = useNavigate();
+  const [settings, setSettings] = useState(settingsOptions);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const toggleSetting = (id: string) => {
+    setSettings(settings.map(s => 
+      s.id === id ? { ...s, enabled: !s.enabled } : s
+    ));
+  };
+
+  const restartTutorial = () => {
+    localStorage.removeItem("neuranoteTutorialComplete");
+    navigate("/dashboard");
+    window.location.reload();
+  };
+
+  const clearAllData = () => {
+    localStorage.removeItem("neuranoteNotes");
+    localStorage.removeItem("neuranoteConcepts");
+    localStorage.removeItem("neuranoteReflections");
+    localStorage.removeItem("neuranoteTutorialComplete");
+    setShowClearConfirm(false);
+    navigate("/dashboard");
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
@@ -79,13 +110,35 @@ const AppSettings = () => {
           <h1 className="text-3xl font-semibold text-foreground mb-2">Settings</h1>
           <p className="text-muted-foreground mb-8">Personalize your experience</p>
 
+          {/* Tutorial & Help */}
+          <section className="mb-8">
+            <h2 className="text-lg font-medium text-foreground mb-4">Help & Tutorial</h2>
+            <div className="p-5 bg-card rounded-2xl border border-border/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <HelpCircle className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-foreground font-medium">App Tutorial</p>
+                    <p className="text-sm text-muted-foreground">Learn how to use NeuraNote step by step</p>
+                  </div>
+                </div>
+                <Button variant="soft" onClick={restartTutorial}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Restart Tutorial
+                </Button>
+              </div>
+            </div>
+          </section>
+
           {/* Preferences */}
           <section className="mb-8">
             <h2 className="text-lg font-medium text-foreground mb-4">Preferences</h2>
             <div className="space-y-4">
-              {settingsOptions.map((option) => (
+              {settings.map((option) => (
                 <div
-                  key={option.label}
+                  key={option.id}
                   className="p-5 bg-card rounded-2xl border border-border/50 flex items-center justify-between"
                 >
                   <div>
@@ -93,6 +146,7 @@ const AppSettings = () => {
                     <p className="text-sm text-muted-foreground">{option.description}</p>
                   </div>
                   <button
+                    onClick={() => toggleSetting(option.id)}
                     className={`w-12 h-7 rounded-full transition-all duration-300 ${
                       option.enabled ? "bg-primary" : "bg-muted"
                     }`}
@@ -109,7 +163,7 @@ const AppSettings = () => {
           </section>
 
           {/* Learning Style */}
-          <section>
+          <section className="mb-8">
             <h2 className="text-lg font-medium text-foreground mb-4">Learning Style</h2>
             <div className="p-6 bg-card rounded-3xl border border-border/50 shadow-soft">
               <p className="text-muted-foreground mb-4">
@@ -124,6 +178,51 @@ const AppSettings = () => {
                     {style}
                   </button>
                 ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Data Management */}
+          <section>
+            <h2 className="text-lg font-medium text-foreground mb-4">Data Management</h2>
+            <div className="p-5 bg-card rounded-2xl border border-destructive/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <Trash2 className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-foreground font-medium">Clear All Data</p>
+                    <p className="text-sm text-muted-foreground">Delete all notes, concepts, and reflections</p>
+                  </div>
+                </div>
+                {!showClearConfirm ? (
+                  <Button 
+                    variant="ghost" 
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setShowClearConfirm(true)}
+                  >
+                    Clear Data
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setShowClearConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={clearAllData}
+                    >
+                      Confirm Delete
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </section>

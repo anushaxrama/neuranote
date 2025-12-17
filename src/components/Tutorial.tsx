@@ -1,115 +1,223 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { 
-  ChevronRight, ChevronLeft, X, Sparkles, FileText, 
-  Network, RefreshCw, BarChart3, Lightbulb, Rocket
+  ChevronRight, X, Sparkles, FileText, 
+  Network, RefreshCw, BarChart3, Rocket, MousePointer2
 } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface TutorialStep {
   id: number;
   title: string;
   description: string;
   icon: React.ReactNode;
-  tip?: string;
-  highlight?: string;
+  targetSelector?: string;
+  targetPage?: string;
+  position: "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "left" | "right";
+  action?: string;
+  highlightArea?: { top: string; left: string; width: string; height: string };
 }
 
 const tutorialSteps: TutorialStep[] = [
   {
     id: 1,
     title: "Welcome to NeuraNote! 🎉",
-    description: "Your AI-powered learning companion that helps you truly understand and remember what you learn. Let me show you around!",
-    icon: <Sparkles className="w-8 h-8 text-primary" />,
-    tip: "This quick tour takes about 1 minute",
+    description: "Let me walk you through the app. I'll show you exactly where to click!",
+    icon: <Sparkles className="w-6 h-6 text-primary" />,
+    position: "center",
   },
   {
     id: 2,
-    title: "Capture Your Thoughts",
-    description: "Start by creating notes about what you're learning. Write in your own words — that's where real understanding begins.",
-    icon: <FileText className="w-8 h-8 text-lavender" />,
-    tip: "AI will automatically extract key concepts from your notes",
-    highlight: "notes",
+    title: "This is your Sidebar",
+    description: "Navigate between different sections of the app from here. Let's start with Notes!",
+    icon: <MousePointer2 className="w-6 h-6 text-primary" />,
+    position: "left",
+    highlightArea: { top: "120px", left: "0", width: "256px", height: "280px" },
+    action: "Look at the sidebar on the left",
   },
   {
     id: 3,
-    title: "See the Connections",
-    description: "Watch your knowledge grow into a beautiful concept map. AI discovers how your ideas connect to each other.",
-    icon: <Network className="w-8 h-8 text-sage" />,
-    tip: "Click on any concept to explore its relationships",
-    highlight: "concept-map",
+    title: "Click on Notes",
+    description: "This is where you'll capture your thoughts and ideas. AI will help extract key concepts!",
+    icon: <FileText className="w-6 h-6 text-lavender" />,
+    targetPage: "/notes",
+    position: "left",
+    highlightArea: { top: "168px", left: "16px", width: "224px", height: "48px" },
+    action: "Click 'Notes' in the sidebar",
   },
   {
     id: 4,
-    title: "Review & Remember",
-    description: "Practice active recall with AI-generated questions. Get gentle, personalized feedback on your explanations.",
-    icon: <RefreshCw className="w-8 h-8 text-blush" />,
-    tip: "Spaced repetition helps move knowledge to long-term memory",
-    highlight: "review",
+    title: "Create a New Note",
+    description: "Click this button to start writing. Try writing about something you're learning!",
+    icon: <FileText className="w-6 h-6 text-lavender" />,
+    targetPage: "/notes",
+    position: "top-right",
+    highlightArea: { top: "32px", left: "calc(100% - 180px)", width: "150px", height: "50px" },
+    action: "Click 'New Note' button",
   },
   {
     id: 5,
-    title: "Track Your Journey",
-    description: "See your progress, reflect on your learning, and get AI-powered insights about your strengths and growth areas.",
-    icon: <BarChart3 className="w-8 h-8 text-primary" />,
-    tip: "Regular reflection deepens understanding",
-    highlight: "insights",
+    title: "Concept Map",
+    description: "Once you have notes with concepts, they'll appear here as connected bubbles!",
+    icon: <Network className="w-6 h-6 text-sage" />,
+    targetPage: "/concept-map",
+    position: "left",
+    highlightArea: { top: "216px", left: "16px", width: "224px", height: "48px" },
+    action: "Click 'Concept Map' to see your ideas visualized",
   },
   {
     id: 6,
-    title: "You're All Set!",
-    description: "Start by creating your first note. Write about something you're curious about or learning right now.",
-    icon: <Rocket className="w-8 h-8 text-primary" />,
-    tip: "Remember: there's no wrong way to learn. Just start!",
+    title: "Review Sessions",
+    description: "Practice active recall here! AI generates questions from your concepts.",
+    icon: <RefreshCw className="w-6 h-6 text-blush" />,
+    targetPage: "/review",
+    position: "left",
+    highlightArea: { top: "264px", left: "16px", width: "224px", height: "48px" },
+    action: "Click 'Review' to practice recall",
+  },
+  {
+    id: 7,
+    title: "Track Your Progress",
+    description: "See insights about your learning journey and reflect on your growth.",
+    icon: <BarChart3 className="w-6 h-6 text-primary" />,
+    targetPage: "/insights",
+    position: "left",
+    highlightArea: { top: "312px", left: "16px", width: "224px", height: "48px" },
+    action: "Click 'Insights' for analytics",
+  },
+  {
+    id: 8,
+    title: "You're Ready! 🚀",
+    description: "Start by creating your first note. Write about anything you're curious about!",
+    icon: <Rocket className="w-6 h-6 text-primary" />,
+    targetPage: "/notes",
+    position: "center",
+    action: "Let's create your first note!",
   },
 ];
 
 interface TutorialProps {
   onComplete: () => void;
-  currentPage?: string;
 }
 
-export const Tutorial = ({ onComplete, currentPage }: TutorialProps) => {
+export const Tutorial = ({ onComplete }: TutorialProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const step = tutorialSteps[currentStep];
   const isLastStep = currentStep === tutorialSteps.length - 1;
-  const isFirstStep = currentStep === 0;
 
-  const handleNext = () => {
+  // Navigate to the correct page for the current step
+  useEffect(() => {
+    if (step.targetPage && location.pathname !== step.targetPage) {
+      navigate(step.targetPage);
+    }
+  }, [currentStep, step.targetPage, location.pathname, navigate]);
+
+  const handleNext = useCallback(() => {
     if (isLastStep) {
       handleComplete();
     } else {
       setCurrentStep(currentStep + 1);
     }
-  };
-
-  const handlePrev = () => {
-    if (!isFirstStep) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
+  }, [isLastStep, currentStep]);
 
   const handleComplete = () => {
     setIsVisible(false);
     localStorage.setItem("neuranoteTutorialComplete", "true");
     onComplete();
+    navigate("/notes");
   };
 
   const handleSkip = () => {
     handleComplete();
   };
 
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleSkip();
+      } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") {
+        handleNext();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleNext]);
+
   if (!isVisible) return null;
 
+  const getTooltipPosition = () => {
+    switch (step.position) {
+      case "center":
+        return "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
+      case "left":
+        return "top-1/2 left-[300px] -translate-y-1/2";
+      case "right":
+        return "top-1/2 right-[100px] -translate-y-1/2";
+      case "top-left":
+        return "top-[100px] left-[300px]";
+      case "top-right":
+        return "top-[100px] right-[100px]";
+      case "bottom-left":
+        return "bottom-[100px] left-[300px]";
+      case "bottom-right":
+        return "bottom-[100px] right-[100px]";
+      default:
+        return "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
-      
+    <div className="fixed inset-0 z-[100]">
+      {/* Dark overlay with cutout */}
+      <div className="absolute inset-0 bg-background/90 backdrop-blur-sm">
+        {/* Spotlight cutout */}
+        {step.highlightArea && (
+          <div
+            className="absolute rounded-2xl transition-all duration-500 ease-out"
+            style={{
+              top: step.highlightArea.top,
+              left: step.highlightArea.left,
+              width: step.highlightArea.width,
+              height: step.highlightArea.height,
+              boxShadow: `
+                0 0 0 9999px rgba(0, 0, 0, 0.75),
+                0 0 30px 10px hsl(var(--primary) / 0.3),
+                inset 0 0 20px 5px hsl(var(--primary) / 0.1)
+              `,
+              border: "2px solid hsl(var(--primary) / 0.5)",
+            }}
+          />
+        )}
+      </div>
+
+      {/* Pulsing arrow pointer */}
+      {step.highlightArea && (
+        <div
+          className="absolute z-[101] animate-bounce"
+          style={{
+            top: `calc(${step.highlightArea.top} + ${step.highlightArea.height} / 2 - 20px)`,
+            left: `calc(${step.highlightArea.left} + ${step.highlightArea.width} + 20px)`,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg animate-pulse">
+              <MousePointer2 className="w-4 h-4 text-primary-foreground -rotate-45" />
+            </div>
+            <span className="text-sm font-medium text-primary bg-card/90 px-3 py-1 rounded-full shadow-lg">
+              {step.action || "Click here"}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Tutorial Card */}
-      <div className="relative w-full max-w-lg mx-4 animate-fade-up">
-        <div className="bg-card rounded-3xl border border-border/50 shadow-elevated overflow-hidden">
+      <div className={`absolute ${getTooltipPosition()} z-[102] w-full max-w-sm px-4`}>
+        <div className="bg-card rounded-3xl border border-border shadow-elevated overflow-hidden animate-fade-up">
           {/* Progress bar */}
           <div className="h-1 bg-muted">
             <div 
@@ -119,60 +227,52 @@ export const Tutorial = ({ onComplete, currentPage }: TutorialProps) => {
           </div>
 
           {/* Content */}
-          <div className="p-8">
-            {/* Icon */}
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              {step.icon}
+          <div className="p-6">
+            {/* Header with icon */}
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                {step.icon}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-foreground mb-1">
+                  {step.title}
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
             </div>
 
-            {/* Title */}
-            <h2 className="text-2xl font-semibold text-foreground text-center mb-4">
-              {step.title}
-            </h2>
-
-            {/* Description */}
-            <p className="text-muted-foreground text-center leading-relaxed mb-6">
-              {step.description}
-            </p>
-
-            {/* Tip */}
-            {step.tip && (
-              <div className="flex items-start gap-2 p-4 bg-accent/30 rounded-2xl mb-6">
-                <Lightbulb className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">{step.tip}</p>
+            {/* Step counter */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-1.5">
+                {tutorialSteps.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === currentStep 
+                        ? "bg-primary w-6" 
+                        : i < currentStep 
+                          ? "bg-primary/50 w-1.5" 
+                          : "bg-muted w-1.5"
+                    }`}
+                  />
+                ))}
               </div>
-            )}
-
-            {/* Step indicator */}
-            <div className="flex justify-center gap-2 mb-6">
-              {tutorialSteps.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentStep(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    i === currentStep 
-                      ? "bg-primary w-6" 
-                      : i < currentStep 
-                        ? "bg-primary/50" 
-                        : "bg-muted"
-                  }`}
-                />
-              ))}
+              <span className="text-xs text-muted-foreground">
+                {currentStep + 1} / {tutorialSteps.length}
+              </span>
             </div>
 
             {/* Actions */}
             <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                onClick={handlePrev}
-                disabled={isFirstStep}
-                className={isFirstStep ? "invisible" : ""}
+              <button
+                onClick={handleSkip}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Back
-              </Button>
-
-              <Button variant="hero" onClick={handleNext}>
+                Skip tutorial
+              </button>
+              <Button variant="hero" size="sm" onClick={handleNext}>
                 {isLastStep ? (
                   <>
                     Get Started
@@ -187,21 +287,21 @@ export const Tutorial = ({ onComplete, currentPage }: TutorialProps) => {
               </Button>
             </div>
           </div>
-
-          {/* Skip button */}
-          <button
-            onClick={handleSkip}
-            className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Skip text */}
-        <p className="text-center text-sm text-muted-foreground/60 mt-4">
-          Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Esc</kbd> or click X to skip
+        {/* Keyboard hint */}
+        <p className="text-center text-xs text-muted-foreground/60 mt-3">
+          Press <kbd className="px-1.5 py-0.5 bg-card rounded text-xs border">Enter</kbd> or <kbd className="px-1.5 py-0.5 bg-card rounded text-xs border">→</kbd> to continue
         </p>
       </div>
+
+      {/* Skip button (always visible) */}
+      <button
+        onClick={handleSkip}
+        className="absolute top-4 right-4 z-[103] p-2 bg-card/80 backdrop-blur-sm rounded-full text-muted-foreground hover:text-foreground transition-colors border border-border/50"
+      >
+        <X className="w-5 h-5" />
+      </button>
     </div>
   );
 };
@@ -228,35 +328,3 @@ export const useTutorial = () => {
 
   return { showTutorial, isLoading, resetTutorial, completeTutorial };
 };
-
-// Tooltip hints for specific features
-interface FeatureHintProps {
-  children: React.ReactNode;
-  hint: string;
-  show?: boolean;
-}
-
-export const FeatureHint = ({ children, hint, show = true }: FeatureHintProps) => {
-  const [dismissed, setDismissed] = useState(false);
-
-  if (!show || dismissed) return <>{children}</>;
-
-  return (
-    <div className="relative">
-      {children}
-      <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-50 animate-bounce">
-        <div className="bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg">
-          {hint}
-          <button 
-            onClick={() => setDismissed(true)}
-            className="ml-2 hover:opacity-70"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-primary" />
-      </div>
-    </div>
-  );
-};
-
