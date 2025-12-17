@@ -528,12 +528,14 @@ const ConceptMap = () => {
 
                   {/* Expanded: Title in center top */}
                   {expandedGroup && (
-                    <g transform={`translate(${canvasSize.width / 2}, 50)`}>
-                      <text x={0} y={0} textAnchor="middle" dominantBaseline="middle" fill={currentColor.text} fontSize="24" fontWeight="700">
+                    <g transform={`translate(${canvasSize.width / 2}, 60)`}>
+                      <rect x={-200} y={-35} width={400} height={70} rx={35} fill="white" fillOpacity={0.95} />
+                      <rect x={-198} y={-33} width={396} height={66} rx={33} fill={currentColor.bgSolid} />
+                      <text x={0} y={-5} textAnchor="middle" dominantBaseline="middle" fill={currentColor.text} fontSize="28" fontWeight="800">
                         {expandedGroup.name}
                       </text>
-                      <text x={0} y={28} textAnchor="middle" fill={currentColor.text} fontSize="13" opacity={0.7}>
-                        {expandedGroup.concepts.length} concepts from this note
+                      <text x={0} y={22} textAnchor="middle" fill={currentColor.text} fontSize="14" fontWeight="600" opacity={0.8}>
+                        {expandedGroup.concepts.length} concepts · {currentConnections.length} connections
                       </text>
                     </g>
                   )}
@@ -548,11 +550,23 @@ const ConceptMap = () => {
                     const col = expandedGroup ? currentColor : getColor(f.groupId);
                     
                     return (
-                      <line key={i} x1={f.x} y1={f.y} x2={t.x} y2={t.y}
-                        stroke={hl ? col.line : col.border}
-                        strokeWidth={hl ? 3 : expandedGroup ? 2 : 1.5}
-                        strokeOpacity={hl ? 0.9 : expandedGroup ? 0.4 : 0.3}
-                      />
+                      <g key={i}>
+                        {/* Glow effect for better visibility */}
+                        {expandedGroup && (
+                          <line x1={f.x} y1={f.y} x2={t.x} y2={t.y}
+                            stroke={col.border}
+                            strokeWidth={hl ? 8 : 6}
+                            strokeOpacity={0.15}
+                            strokeLinecap="round"
+                          />
+                        )}
+                        <line x1={f.x} y1={f.y} x2={t.x} y2={t.y}
+                          stroke={hl ? col.line : col.border}
+                          strokeWidth={hl ? 4 : expandedGroup ? 3 : 2}
+                          strokeOpacity={hl ? 1 : expandedGroup ? 0.7 : 0.4}
+                          strokeLinecap="round"
+                        />
+                      </g>
                     );
                   })}
 
