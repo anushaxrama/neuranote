@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Home, FileText, Network, RefreshCw, BarChart3, Settings, ArrowLeft } from "lucide-react";
+import { Home, FileText, Network, RefreshCw, BarChart3, Settings } from "lucide-react";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/dashboard", tutorialId: "nav-home" },
@@ -15,15 +14,26 @@ export const Sidebar = () => {
   const location = useLocation();
 
   return (
-    <aside data-tutorial="sidebar" className="w-64 bg-card/50 border-r border-border/50 p-6 flex flex-col">
-      <div className="flex items-center gap-2 mb-8">
-        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-          <div className="w-4 h-4 rounded-full bg-primary/60" />
+    <aside 
+      data-tutorial="sidebar" 
+      className="w-72 bg-white/60 backdrop-blur-xl border-r border-border/30 p-8 flex flex-col min-h-screen"
+    >
+      {/* Logo - Clickable to go back to landing page */}
+      <Link 
+        to="/" 
+        className="flex items-center gap-3 mb-10 group cursor-pointer hover:opacity-80 transition-opacity"
+      >
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-400 to-pink-400 flex items-center justify-center shadow-soft group-hover:shadow-md transition-shadow">
+          <div className="w-4 h-4 rounded-full bg-white/80" />
         </div>
-        <span className="text-lg font-medium text-foreground">NeuraNote</span>
-      </div>
+        <div>
+          <span className="text-xl font-medium text-foreground tracking-tight block">NeuraNote</span>
+          <span className="text-xs text-muted-foreground">← Back to home</span>
+        </div>
+      </Link>
 
-      <nav className="space-y-2 flex-1">
+      {/* Navigation */}
+      <nav className="space-y-1.5 flex-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -31,28 +41,33 @@ export const Sidebar = () => {
               key={item.path}
               to={item.path}
               data-tutorial={item.tutorialId}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 ${
+              className={`group flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 ${
                 isActive
-                  ? "bg-primary/10 text-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "bg-white shadow-soft text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/60"
               }`}
             >
-              <item.icon className="w-5 h-5" />
-              <span>{item.label}</span>
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                isActive
+                  ? "bg-gradient-to-br from-violet-100 to-pink-100"
+                  : "bg-transparent group-hover:bg-muted/50"
+              }`}>
+                <item.icon className={`w-4 h-4 transition-colors ${
+                  isActive ? "text-violet-600" : ""
+                }`} />
+              </div>
+              <span className="font-medium">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="pt-8">
-        <Link to="/">
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to home
-          </Button>
-        </Link>
+      {/* Footer */}
+      <div className="pt-8 border-t border-border/30">
+        <p className="text-xs text-muted-foreground/60 px-2">
+          AI-powered learning
+        </p>
       </div>
     </aside>
   );
 };
-

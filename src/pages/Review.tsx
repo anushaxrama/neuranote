@@ -21,7 +21,6 @@ interface FeedbackResult {
   suggestions: string[];
 }
 
-// Get concepts from localStorage
 const getStoredConcepts = (): string[] => {
   const stored = localStorage.getItem("neuranoteConcepts");
   return stored ? JSON.parse(stored) : [];
@@ -56,7 +55,6 @@ const Review = () => {
       setQuestions(generatedQuestions);
     } catch (error) {
       console.error("Error loading questions:", error);
-      // Fallback to simple questions based on concepts
       setQuestions(concepts.slice(0, 3).map(concept => ({
         question: `How would you explain "${concept}" in your own words?`,
         concept,
@@ -121,289 +119,332 @@ const Review = () => {
 
   const currentQuestion = questions[currentIndex];
 
-  const getUnderstandingColor = (understanding: string) => {
+  const getUnderstandingStyle = (understanding: string) => {
     switch (understanding) {
       case "strong":
-        return "bg-sage/20 text-sage border-sage/30";
+        return "bg-emerald-50 border-emerald-200 text-emerald-800";
       case "developing":
-        return "bg-lavender/20 text-lavender border-lavender/30";
+        return "bg-violet-50 border-violet-200 text-violet-800";
       case "needs_work":
-        return "bg-blush/20 text-blush border-blush/30";
+        return "bg-amber-50 border-amber-200 text-amber-800";
       default:
         return "bg-muted text-muted-foreground";
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-[#FDFCFA] flex">
       <Sidebar />
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-8">
-        {/* Empty State - No Concepts */}
-        {concepts.length === 0 ? (
-          <div className="max-w-lg text-center">
-            <div className="w-20 h-20 rounded-full bg-blush/20 flex items-center justify-center mx-auto mb-6">
-              <RefreshCw className="w-10 h-10 text-blush" />
-            </div>
-            <h2 className="text-2xl font-semibold text-foreground mb-3">No concepts to review yet</h2>
-            <p className="text-muted-foreground mb-6">
-              Create some notes first! Once you have notes with concepts, you can practice 
-              recalling them here with AI-generated questions.
-            </p>
-            <Link to="/notes">
-              <Button variant="hero">
-                <FileText className="w-4 h-4 mr-2" />
-                Create Notes First
-              </Button>
-            </Link>
+      <main className="flex-1 relative overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div 
+            className="gradient-blob gradient-blob-purple blob-float absolute"
+            style={{ width: '450px', height: '450px', top: '-10%', left: '10%' }}
+          />
+          <div 
+            className="gradient-blob gradient-blob-mint blob-float-delayed absolute"
+            style={{ width: '400px', height: '400px', bottom: '5%', right: '10%' }}
+          />
+        </div>
 
-            <div className="mt-8 p-4 bg-accent/30 rounded-2xl">
-              <p className="text-sm text-muted-foreground">
-                <Lightbulb className="w-4 h-4 inline mr-1" />
-                Tip: Active recall (testing yourself) is one of the most effective ways to learn!
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+          {/* Empty State - No Concepts */}
+          {concepts.length === 0 ? (
+            <div className="max-w-lg text-center animate-fade-up">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center mx-auto mb-8">
+                <RefreshCw className="w-12 h-12 text-pink-600" />
+              </div>
+              <p className="font-display-italic text-lg text-muted-foreground mb-3">
+                Nothing to review yet
               </p>
-            </div>
-          </div>
-        ) : !hasStarted ? (
-          /* Start Session Screen */
-          <div className="max-w-lg text-center">
-            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-10 h-10 text-primary" />
-            </div>
-            <h2 className="text-2xl font-semibold text-foreground mb-3">Ready to Review?</h2>
-            <p className="text-muted-foreground mb-6">
-              You have <span className="text-foreground font-medium">{concepts.length} concepts</span> to 
-              practice. AI will generate personalized questions to help you recall and understand them better.
-            </p>
-            
-            {/* Concept Preview */}
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
-              {concepts.slice(0, 6).map((concept) => (
-                <span key={concept} className="px-3 py-1 text-sm bg-primary/10 text-primary rounded-full">
-                  {concept}
-                </span>
-              ))}
-              {concepts.length > 6 && (
-                <span className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-full">
-                  +{concepts.length - 6} more
-                </span>
-              )}
-            </div>
-
-            <Button variant="hero" size="lg" onClick={startSession}>
-              <Sparkles className="w-5 h-5 mr-2" />
-              Start Review Session
-            </Button>
-
-            <div className="mt-8 p-4 bg-accent/30 rounded-2xl">
-              <p className="text-sm text-muted-foreground">
-                <BookOpen className="w-4 h-4 inline mr-1" />
-                Sessions typically take 5-10 minutes
+              <h2 className="text-3xl font-medium text-foreground mb-4">
+                Create Some<br />
+                <span className="font-display-italic">Notes First</span>
+              </h2>
+              <p className="text-muted-foreground mb-8 leading-relaxed">
+                Once you have notes with concepts, you can practice 
+                recalling them here with AI-generated questions.
               </p>
-            </div>
-          </div>
-        ) : isLoading ? (
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Generating personalized review questions...</p>
-            <p className="text-sm text-muted-foreground/60 mt-2">AI is crafting questions just for you</p>
-          </div>
-        ) : sessionComplete ? (
-          <div className="max-w-lg text-center">
-            <div className="w-20 h-20 rounded-full bg-sage/20 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 className="w-10 h-10 text-sage" />
-            </div>
-            <h2 className="text-2xl font-semibold text-foreground mb-2">Session Complete!</h2>
-            <p className="text-muted-foreground mb-6">
-              You reviewed {questions.length} concepts. Great work on your learning journey!
-            </p>
-            <div className="p-4 bg-accent/30 rounded-2xl mb-6">
-              <p className="text-sm text-muted-foreground">
-                <Sparkles className="w-4 h-4 inline mr-1" />
-                Taking regular breaks between study sessions helps consolidate your learning.
-              </p>
-            </div>
-            <div className="flex gap-3 justify-center">
-              <Button variant="soft" onClick={handleRestart}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Start New Session
-              </Button>
-              <Link to="/insights">
-                <Button variant="hero">
-                  View Insights
-                  <ChevronRight className="w-4 h-4 ml-2" />
+              <Link to="/notes">
+                <Button className="btn-primary">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create Notes First
                 </Button>
               </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-2xl w-full">
-            {/* Progress indicator */}
-            <div className="flex items-center justify-center gap-2 mb-8">
-              {questions.map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    completedQuestions.includes(i) 
-                      ? "bg-sage" 
-                      : i === currentIndex 
-                        ? "bg-primary" 
-                        : "bg-muted"
-                  }`}
-                />
-              ))}
-            </div>
 
-            {/* Question Card */}
-            <div className="p-8 bg-card rounded-3xl border border-border/50 shadow-soft mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Sparkles className="w-3 h-3" />
-                  Concept: {currentQuestion?.concept}
+              <div className="mt-10 glass rounded-3xl p-6">
+                <p className="text-sm text-muted-foreground">
+                  <Lightbulb className="w-4 h-4 inline mr-2 text-amber-500" />
+                  Active recall (testing yourself) is one of the most effective ways to learn!
                 </p>
-                <span className="text-xs text-muted-foreground/60">
-                  {currentIndex + 1} of {questions.length}
-                </span>
               </div>
-              
-              <h2 className="text-2xl font-medium text-foreground mb-6 leading-relaxed">
-                {currentQuestion?.question}
+            </div>
+          ) : !hasStarted ? (
+            /* Start Session Screen */
+            <div className="max-w-lg text-center animate-fade-up">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center mx-auto mb-8">
+                <Sparkles className="w-12 h-12 text-violet-600" />
+              </div>
+              <p className="font-display-italic text-lg text-muted-foreground mb-3">
+                Test your knowledge
+              </p>
+              <h2 className="text-3xl font-medium text-foreground mb-4">
+                Ready to<br />
+                <span className="font-display-italic">Review?</span>
               </h2>
-
-              {/* Hint */}
-              {showHint && currentQuestion?.hint && (
-                <div className="p-4 bg-accent/30 rounded-2xl mb-6 animate-fade-up">
-                  <p className="text-sm text-muted-foreground flex items-start gap-2">
-                    <Lightbulb className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
-                    {currentQuestion.hint}
-                  </p>
-                </div>
-              )}
-
-              {/* User Answer Input */}
-              <div className="mb-4">
-                <label className="text-sm text-muted-foreground mb-2 block">
-                  Your explanation:
-                </label>
-                <textarea
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  placeholder="Try explaining this in your own words..."
-                  className="w-full h-32 p-4 bg-muted/30 rounded-2xl border-none resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
-                />
+              <p className="text-muted-foreground mb-8 leading-relaxed">
+                You have <span className="text-foreground font-medium">{concepts.length} concepts</span> to 
+                practice. AI will generate personalized questions to strengthen your understanding.
+              </p>
+              
+              {/* Concept Preview */}
+              <div className="flex flex-wrap justify-center gap-2 mb-10">
+                {concepts.slice(0, 6).map((concept, i) => (
+                  <span 
+                    key={concept} 
+                    className={`px-4 py-2 text-sm font-medium rounded-full
+                      ${i % 4 === 0 ? 'bubble-blue' : ''}
+                      ${i % 4 === 1 ? 'bubble-green' : ''}
+                      ${i % 4 === 2 ? 'bubble-pink' : ''}
+                      ${i % 4 === 3 ? 'bubble-purple' : ''}
+                    `}
+            >
+                    {concept}
+                  </span>
+                ))}
+                {concepts.length > 6 && (
+                  <span className="px-4 py-2 text-sm font-medium bg-muted text-muted-foreground rounded-full">
+                    +{concepts.length - 6} more
+                  </span>
+                )}
               </div>
 
-              {/* AI Feedback */}
-              {feedbackResult && (
-                <div className={`p-4 rounded-2xl mb-4 border animate-fade-up ${getUnderstandingColor(feedbackResult.understanding)}`}>
-                  <div className="flex items-start gap-3">
-                    <MessageCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium mb-1">
-                        {feedbackResult.understanding === "strong" && "Excellent understanding! 🎉"}
-                        {feedbackResult.understanding === "developing" && "You're on the right track! 👍"}
-                        {feedbackResult.understanding === "needs_work" && "Keep exploring! 💪"}
-                      </p>
-                      <p className="text-sm opacity-90">{feedbackResult.feedback}</p>
-                      {feedbackResult.suggestions.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-current/10">
-                          <p className="text-xs opacity-70">Suggestions:</p>
-                          <ul className="text-xs opacity-80 mt-1 space-y-1">
-                            {feedbackResult.suggestions.map((s, i) => (
-                              <li key={i}>• {s}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+              <Button className="btn-primary text-base" onClick={startSession}>
+                <Sparkles className="w-5 h-5 mr-2" />
+                Start Review Session
+              </Button>
+
+              <div className="mt-10 glass rounded-3xl p-6">
+                <p className="text-sm text-muted-foreground">
+                  <BookOpen className="w-4 h-4 inline mr-2 text-violet-500" />
+                  Sessions typically take 5-10 minutes
+                </p>
+              </div>
+            </div>
+          ) : isLoading ? (
+            <div className="text-center animate-fade-up">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center mx-auto mb-6">
+                <Loader2 className="w-10 h-10 text-violet-600 animate-spin" />
+              </div>
+              <p className="font-display-italic text-lg text-foreground mb-2">Preparing your session...</p>
+              <p className="text-sm text-muted-foreground">AI is crafting personalized questions</p>
+            </div>
+          ) : sessionComplete ? (
+            <div className="max-w-lg text-center animate-fade-up">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center mx-auto mb-8">
+                <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+              </div>
+              <p className="font-display-italic text-lg text-muted-foreground mb-3">
+                Well done!
+              </p>
+              <h2 className="text-3xl font-medium text-foreground mb-4">
+                Session<br />
+                <span className="font-display-italic">Complete</span>
+              </h2>
+              <p className="text-muted-foreground mb-8 leading-relaxed">
+                You reviewed {questions.length} concepts. Great work on your learning journey!
+              </p>
+              <div className="glass rounded-3xl p-6 mb-8">
+                <p className="text-sm text-muted-foreground">
+                  <Sparkles className="w-4 h-4 inline mr-2 text-violet-500" />
+                  Taking regular breaks between study sessions helps consolidate your learning.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-center">
+                <Button variant="outline" className="rounded-full px-6" onClick={handleRestart}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  New Session
+                </Button>
+                <Link to="/insights">
+                  <Button className="btn-primary">
+                    View Insights
+                    <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
+        </div>
+            </div>
+          ) : (
+            <div className="max-w-2xl w-full animate-fade-up">
+          {/* Progress indicator */}
+              <div className="flex items-center justify-center gap-2 mb-10">
+                {questions.map((_, i) => (
+              <div
+                key={i}
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      completedQuestions.includes(i) 
+                        ? "w-8 bg-emerald-400" 
+                        : i === currentIndex 
+                          ? "w-8 bg-violet-500" 
+                          : "w-2 bg-muted"
+                    }`}
+              />
+            ))}
+          </div>
+
+          {/* Question Card */}
+              <div className="glass rounded-3xl p-10 shadow-elevated mb-6">
+                <div className="flex items-center justify-between mb-6">
+                  <span className={`px-4 py-1.5 text-sm font-medium rounded-full bubble-purple`}>
+                    {currentQuestion?.concept}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {currentIndex + 1} of {questions.length}
+                  </span>
+                </div>
+            
+                <h2 className="text-2xl lg:text-3xl font-medium text-foreground mb-8 leading-relaxed">
+                  {currentQuestion?.question}
+            </h2>
+
+                {/* Hint */}
+                {showHint && currentQuestion?.hint && (
+                  <div className="p-5 bg-amber-50/80 border border-amber-200 rounded-2xl mb-6 animate-fade-up">
+                    <p className="text-sm text-amber-800 flex items-start gap-3">
+                      <Lightbulb className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      {currentQuestion.hint}
+                    </p>
+                  </div>
+                )}
+
+                {/* User Answer Input */}
+                <div className="mb-6">
+                  <label className="text-sm text-muted-foreground mb-3 block font-display-italic">
+                    Your explanation:
+                  </label>
+                  <textarea
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    placeholder="Try explaining this in your own words..."
+                    className="w-full h-36 p-5 bg-white/70 rounded-2xl border border-border/50 resize-none focus:outline-none focus:ring-2 focus:ring-violet-200 text-foreground leading-relaxed"
+                  />
+                </div>
+
+                {/* AI Feedback */}
+                {feedbackResult && (
+                  <div className={`p-5 rounded-2xl mb-6 border-2 animate-fade-up ${getUnderstandingStyle(feedbackResult.understanding)}`}>
+                    <div className="flex items-start gap-4">
+                      <MessageCircle className="w-6 h-6 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium mb-2">
+                          {feedbackResult.understanding === "strong" && "Excellent understanding! 🎉"}
+                          {feedbackResult.understanding === "developing" && "You're on the right track! 👍"}
+                          {feedbackResult.understanding === "needs_work" && "Keep exploring! 💪"}
+                        </p>
+                        <p className="text-sm opacity-90 leading-relaxed">{feedbackResult.feedback}</p>
+                        {feedbackResult.suggestions.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-current/10">
+                            <p className="text-xs opacity-70 font-medium">Suggestions:</p>
+                            <ul className="text-sm opacity-80 mt-2 space-y-1.5">
+                              {feedbackResult.suggestions.map((s, i) => (
+                                <li key={i}>• {s}</li>
+                              ))}
+                            </ul>
+                          </div>
+              )}
+            </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3">
-                {!showHint && (
-                  <Button variant="ghost" onClick={() => setShowHint(true)}>
-                    <Lightbulb className="w-4 h-4 mr-2" />
-                    Need a hint?
-                  </Button>
                 )}
-                <Button
-                  variant="soft"
-                  onClick={() => setShowAnswer(!showAnswer)}
-                >
-                  {showAnswer ? (
-                    <>
-                      <EyeOff className="w-4 h-4 mr-2" />
-                      Hide Reference
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-4 h-4 mr-2" />
-                      Show Reference
-                    </>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-3">
+                  {!showHint && (
+                    <Button variant="ghost" className="rounded-full" onClick={() => setShowHint(true)}>
+                      <Lightbulb className="w-4 h-4 mr-2" />
+                      Need a hint?
+                    </Button>
                   )}
-                </Button>
-                {userAnswer.trim() && !feedbackResult && (
-                  <Button
-                    variant="hero"
-                    onClick={handleGetFeedback}
-                    disabled={isGettingFeedback}
-                    className="ml-auto"
-                  >
-                    {isGettingFeedback ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4 mr-2" />
-                    )}
-                    Get AI Feedback
-                  </Button>
-                )}
-              </div>
-
-              {/* Reference Answer */}
-              {showAnswer && (
-                <div className="mt-4 p-4 bg-muted/30 rounded-2xl animate-fade-up">
-                  <p className="text-sm text-muted-foreground mb-2">Think about:</p>
-                  <p className="text-foreground leading-relaxed">
-                    This concept involves important principles that connect to other areas of learning. 
-                    Consider how {currentQuestion?.concept} relates to your own experience and other things you know.
-                  </p>
-                </div>
+            <Button
+                    variant="outline"
+                    className="rounded-full"
+              onClick={() => setShowAnswer(!showAnswer)}
+            >
+              {showAnswer ? (
+                <>
+                  <EyeOff className="w-4 h-4 mr-2" />
+                        Hide Reference
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                        Show Reference
+                </>
               )}
-            </div>
-
-            {/* Confidence Slider */}
-            {(showAnswer || feedbackResult) && (
-              <div className="p-6 bg-card/50 rounded-3xl border border-border/30 animate-fade-up">
-                <p className="text-sm text-muted-foreground mb-4">How confident do you feel about this concept?</p>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={confidence}
-                  onChange={(e) => setConfidence(Number(e.target.value))}
-                  className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-soft"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>Still fuzzy</span>
-                  <span>Very clear</span>
+            </Button>
+                  {userAnswer.trim() && !feedbackResult && (
+                    <Button
+                      className="btn-primary ml-auto"
+                      onClick={handleGetFeedback}
+                      disabled={isGettingFeedback}
+                    >
+                      {isGettingFeedback ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Get AI Feedback
+                    </Button>
+                  )}
                 </div>
-                
-                <Button variant="hero" className="w-full mt-6" onClick={handleNext}>
-                  {currentIndex < questions.length - 1 ? "Continue" : "Complete Session"}
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            )}
 
-            {/* Reassurance */}
-            <p className="text-center text-sm text-muted-foreground/60 mt-8">
-              It's okay to take breaks. Learning is a journey. ✨
-            </p>
+                {/* Reference Answer */}
+                {showAnswer && (
+                  <div className="mt-6 p-5 bg-white/50 rounded-2xl border border-border/50 animate-fade-up">
+                    <p className="text-sm text-muted-foreground mb-2 font-display-italic">Think about:</p>
+                    <p className="text-foreground leading-relaxed">
+                      This concept involves important principles that connect to other areas of learning. 
+                      Consider how {currentQuestion?.concept} relates to your own experience and other things you know.
+                    </p>
+                  </div>
+                )}
           </div>
-        )}
+
+          {/* Confidence Slider */}
+              {(showAnswer || feedbackResult) && (
+                <div className="glass rounded-3xl p-8 animate-fade-up">
+                  <p className="text-sm text-muted-foreground mb-5 font-display-italic">
+                    How confident do you feel about this concept?
+                  </p>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={confidence}
+                onChange={(e) => setConfidence(Number(e.target.value))}
+                    className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500 [&::-webkit-slider-thumb]:shadow-elevated"
+              />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-3">
+                <span>Still fuzzy</span>
+                <span>Very clear</span>
+              </div>
+              
+                  <Button className="btn-primary w-full mt-8" onClick={handleNext}>
+                    {currentIndex < questions.length - 1 ? "Continue" : "Complete Session"}
+                    <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          )}
+
+              {/* Encouragement */}
+              <p className="text-center text-sm text-muted-foreground mt-10 font-display-italic">
+                It's okay to take breaks. Learning is a journey. ✨
+          </p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

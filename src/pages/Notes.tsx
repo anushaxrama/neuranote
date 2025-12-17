@@ -32,7 +32,6 @@ const getStoredNotes = (): Note[] => {
 const saveNotesToStorage = (notes: Note[]) => {
   try {
     localStorage.setItem("neuranoteNotes", JSON.stringify(notes));
-    // Also save all concepts for other pages
     const allConcepts = notes.flatMap(n => n.concepts);
     const uniqueConcepts = [...new Set(allConcepts)];
     localStorage.setItem("neuranoteConcepts", JSON.stringify(uniqueConcepts));
@@ -59,7 +58,6 @@ const Notes = () => {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Load notes from localStorage on mount
   useEffect(() => {
     setNotes(getStoredNotes());
   }, []);
@@ -109,12 +107,7 @@ const Notes = () => {
   };
 
   const handleSaveNote = async () => {
-    console.log("Save button clicked!");
-    console.log("Title:", newNoteTitle);
-    console.log("Content length:", newNoteContent.length);
-    
     if (!newNoteTitle.trim() || !newNoteContent.trim()) {
-      console.log("Title or content is empty, not saving");
       setSaveError("Please add a title and content");
       return;
     }
@@ -122,25 +115,19 @@ const Notes = () => {
     setSaveError(null);
     setIsSaving(true);
 
-    // Try to extract concepts, but don't block save if it fails
     let conceptsToSave = [...extractedConcepts];
     
     if (conceptsToSave.length === 0) {
-      console.log("No concepts yet, trying to extract...");
       try {
         const extracted = await extractConcepts(newNoteContent);
         if (extracted && extracted.length > 0) {
           conceptsToSave = extracted;
           setExtractedConcepts(extracted);
-          console.log("Extracted concepts:", extracted);
         }
       } catch (error) {
-        console.error("Error auto-extracting concepts (continuing anyway):", error);
-        // Continue without concepts - still save the note
+        console.error("Error auto-extracting concepts:", error);
       }
     }
-
-    console.log("Creating note with concepts:", conceptsToSave);
 
     const newNote: Note = {
       id: Date.now().toString(),
@@ -156,12 +143,9 @@ const Notes = () => {
     setNotes(updatedNotes);
     saveNotesToStorage(updatedNotes);
     
-    console.log("Note saved successfully!");
-    
     setIsSaving(false);
     setShowSaveSuccess(true);
 
-    // Hide success message and reset form after delay
     setTimeout(() => {
       setShowSaveSuccess(false);
       setIsCreating(false);
@@ -201,364 +185,431 @@ const Notes = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-[#FDFCFA] flex">
       <Sidebar />
 
       {/* Main Content */}
-      <main className="flex-1 p-8">
-        <div className="max-w-4xl mx-auto">
-          {!selectedNote && !isCreating ? (
-            <>
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h1 className="text-3xl font-semibold text-foreground mb-2">Your Notes</h1>
-                  <p className="text-muted-foreground">Capture and organize your thoughts</p>
-                </div>
-                <Button 
-                  variant="hero" 
-                  onClick={() => setIsCreating(true)}
-                  data-tutorial="new-note"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Note
-                </Button>
-              </div>
+      <main className="flex-1 relative overflow-hidden">
+        {/* Background blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div 
+            className="gradient-blob gradient-blob-coral blob-float absolute"
+            style={{ width: '400px', height: '400px', top: '-5%', right: '20%' }}
+          />
+          <div 
+            className="gradient-blob gradient-blob-purple blob-float-delayed absolute"
+            style={{ width: '350px', height: '350px', bottom: '10%', left: '5%' }}
+          />
+        </div>
 
-              {notes.length === 0 ? (
-                /* Empty State */
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 rounded-full bg-lavender/20 flex items-center justify-center mx-auto mb-6">
-                    <PenLine className="w-10 h-10 text-lavender" />
-                  </div>
-                  <h2 className="text-xl font-semibold text-foreground mb-3">
-                    No notes yet
-                  </h2>
-                  <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-                    Start by writing about something you're learning. 
-                    AI will help you extract key concepts automatically.
-                  </p>
+        <div className="relative z-10 p-8 lg:p-12">
+          <div className="max-w-4xl mx-auto">
+            {!selectedNote && !isCreating ? (
+              <>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-10 animate-fade-up">
+            <div>
+                    <p className="font-display-italic text-lg text-muted-foreground mb-2">
+                      Your thoughts, captured
+                    </p>
+                    <h1 className="text-4xl font-medium text-foreground tracking-tight">Notes</h1>
+            </div>
                   <Button 
-                    variant="hero" 
+                    className="btn-primary"
                     onClick={() => setIsCreating(true)}
-                    data-tutorial="new-note-empty"
+                    data-tutorial="new-note"
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Your First Note
-                  </Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Note
+            </Button>
+          </div>
 
-                  {/* Writing prompts */}
-                  <div className="mt-12 p-6 bg-accent/30 rounded-3xl border border-accent/50 text-left max-w-md mx-auto">
-                    <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4 text-primary" />
-                      Not sure what to write about?
-                    </h3>
-                    <ul className="text-sm text-muted-foreground space-y-2">
-                      <li>• Something interesting you learned today</li>
-                      <li>• A concept you're trying to understand</li>
-                      <li>• Notes from a book, video, or class</li>
-                      <li>• An idea you want to explore further</li>
-                    </ul>
+                {notes.length === 0 ? (
+                  /* Empty State */
+                  <div className="text-center py-20 animate-fade-up">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center mx-auto mb-8">
+                      <PenLine className="w-12 h-12 text-pink-600" />
+                    </div>
+                    <p className="font-display-italic text-lg text-muted-foreground mb-3">
+                      Begin your journey
+                    </p>
+                    <h2 className="text-3xl font-medium text-foreground mb-4">
+                      Write Your First<br />
+                      <span className="font-display-italic">Note</span>
+                    </h2>
+                    <p className="text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed">
+                      Start by writing about something you're learning. 
+                      AI will help you extract key concepts automatically.
+                    </p>
+                    <Button 
+                      className="btn-primary"
+                      onClick={() => setIsCreating(true)}
+                      data-tutorial="new-note-empty"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Your First Note
+                    </Button>
+
+                    {/* Writing prompts */}
+                    <div className="mt-14 glass rounded-3xl p-8 text-left max-w-md mx-auto">
+                      <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                        <Lightbulb className="w-4 h-4 text-amber-500" />
+                        Not sure what to write about?
+                      </h3>
+                      <ul className="text-sm text-muted-foreground space-y-3">
+                        <li className="flex items-start gap-2">
+                          <span className="text-amber-500">•</span>
+                          Something interesting you learned today
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-amber-500">•</span>
+                          A concept you're trying to understand
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-amber-500">•</span>
+                          Notes from a book, video, or class
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-amber-500">•</span>
+                          An idea you want to explore further
+                        </li>
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <>
-                  {/* Notes Grid */}
-                  <div className="space-y-4">
-                    {notes.map((note) => (
-                      <div
-                        key={note.id}
-                        onClick={() => {
-                          setSelectedNote(note);
-                          setExtractedConcepts(note.concepts);
-                          setSummary(note.summary || "");
-                        }}
-                        className="p-6 bg-card rounded-3xl border border-border/50 shadow-soft hover:shadow-elevated transition-all duration-300 cursor-pointer group"
-                      >
-                        <h3 className="text-lg font-medium text-foreground mb-2">{note.title}</h3>
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{note.content}</p>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" />
-                            {note.concepts.length} concepts
-                          </span>
-                          <span>•</span>
-                          <span>{formatTimeAgo(note.createdAt)}</span>
-                        </div>
-                        {note.concepts.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {note.concepts.slice(0, 4).map((concept) => (
-                              <span key={concept} className="px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
-                                {concept}
-                              </span>
-                            ))}
-                            {note.concepts.length > 4 && (
-                              <span className="px-2 py-1 text-xs bg-muted text-muted-foreground rounded-full">
-                                +{note.concepts.length - 4} more
-                              </span>
-                            )}
+                ) : (
+                  <div className="stagger-children">
+          {/* Notes Grid */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {notes.map((note, i) => (
+                        <div
+                          key={note.id}
+                          onClick={() => {
+                            setSelectedNote(note);
+                            setExtractedConcepts(note.concepts);
+                            setSummary(note.summary || "");
+                          }}
+                          className={`card-modern p-6 cursor-pointer hover:scale-[1.02] transition-all duration-300
+                            ${i === 0 ? 'md:col-span-2' : ''}`}
+              >
+                <h3 className="text-lg font-medium text-foreground mb-2">{note.title}</h3>
+                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{note.content}</p>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-3">
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles className="w-3 h-3" />
+                              {note.concepts.length} concepts
+                            </span>
+                            <span className="text-muted-foreground/40">•</span>
+                            <span>{formatTimeAgo(note.createdAt)}</span>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                          {note.concepts.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {note.concepts.slice(0, 4).map((concept, j) => (
+                                <span 
+                                  key={concept} 
+                                  className={`px-3 py-1 text-xs font-medium rounded-full transition-all
+                                    ${j % 4 === 0 ? 'bubble-blue' : ''}
+                                    ${j % 4 === 1 ? 'bubble-green' : ''}
+                                    ${j % 4 === 2 ? 'bubble-pink' : ''}
+                                    ${j % 4 === 3 ? 'bubble-purple' : ''}
+                                  `}
+                                >
+                                  {concept}
+                                </span>
+                              ))}
+                              {note.concepts.length > 4 && (
+                                <span className="px-3 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-full">
+                                  +{note.concepts.length - 4} more
+                                </span>
+                              )}
+                </div>
+                          )}
+              </div>
+            ))}
+          </div>
 
-                  {/* View Concept Map CTA */}
-                  <div className="mt-8 p-6 bg-sage/10 rounded-3xl border border-sage/30">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-start gap-3">
-                        <Network className="w-5 h-5 text-sage mt-0.5" />
-                        <div>
-                          <p className="text-foreground font-medium">
-                            You have {notes.reduce((acc, n) => acc + n.concepts.length, 0)} concepts from {notes.length} notes
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            See how they connect in your Concept Map!
-                          </p>
+                    {/* View Concept Map CTA */}
+                    <div className="mt-8 glass rounded-3xl p-6">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
+                            <Network className="w-6 h-6 text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {notes.reduce((acc, n) => acc + n.concepts.length, 0)} concepts from {notes.length} notes
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              See how they connect in your Concept Map!
+                            </p>
+                          </div>
                         </div>
+                        <Button 
+                          variant="outline" 
+                          className="rounded-full px-6"
+                          onClick={() => navigate("/concept-map")}
+                        >
+                          <Network className="w-4 h-4 mr-2" />
+                          View Map
+                        </Button>
                       </div>
-                      <Button variant="soft" onClick={() => navigate("/concept-map")}>
-                        <Network className="w-4 h-4 mr-2" />
-                        View Map
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Note Editor */
+              <div className="space-y-6 animate-fade-up">
+                {/* Success Message */}
+                {showSaveSuccess && (
+                  <div className="fixed top-6 right-6 z-50 animate-fade-up">
+                    <div className="glass rounded-2xl shadow-elevated p-5 flex items-center gap-4 border border-emerald-200 bg-emerald-50/80">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Note Saved!</p>
+                        <p className="text-sm text-muted-foreground">
+                          {extractedConcepts.length > 0 
+                            ? `${extractedConcepts.length} concepts added`
+                            : "Your note has been saved"
+                          }
+                        </p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="ml-2 rounded-full"
+                        onClick={() => navigate("/concept-map")}
+                      >
+                        View Map →
                       </Button>
                     </div>
                   </div>
-                </>
-              )}
-            </>
-          ) : (
-            /* Note Editor */
-            <div className="space-y-6">
-              {/* Success Message */}
-              {showSaveSuccess && (
-                <div className="fixed top-4 right-4 z-50 animate-fade-up">
-                  <div className="bg-sage text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <div>
-                      <p className="font-medium">Note Saved!</p>
-                      <p className="text-sm opacity-90">
-                        {extractedConcepts.length > 0 
-                          ? `${extractedConcepts.length} concepts added to your map`
-                          : "Your note has been saved"
-                        }
-                      </p>
-                    </div>
+                )}
+
+                {/* Editor Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-display-italic text-muted-foreground mb-1">
+                      {isCreating ? 'New note' : 'Viewing note'}
+                    </p>
+                    <h1 className="text-2xl font-medium text-foreground">
+                      {isCreating ? "Create Note" : selectedNote?.title}
+                    </h1>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedNote && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full"
+                        onClick={() => handleDeleteNote(selectedNote.id)}
+                      >
+                        Delete
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
-                      size="sm" 
-                      className="text-white hover:bg-white/20 ml-2"
-                      onClick={() => navigate("/concept-map")}
+                      size="icon" 
+                      className="rounded-full"
+                      onClick={closeEditor}
                     >
-                      View Map →
+                      <X className="w-5 h-5" />
                     </Button>
                   </div>
                 </div>
-              )}
 
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {isCreating ? "Create New Note" : selectedNote?.title}
-                </h1>
-                <div className="flex items-center gap-2">
-                  {selectedNote && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteNote(selectedNote.id)}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="icon" onClick={closeEditor}>
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-              </div>
+                {/* Error Message */}
+                {saveError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
+                    <p className="text-sm text-red-600">{saveError}</p>
+                  </div>
+                )}
 
-              {/* Error Message */}
-              {saveError && (
-                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
-                  <p className="text-sm text-destructive">{saveError}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Editor */}
-                <div className="lg:col-span-2 space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Note title..."
-                    value={selectedNote?.title || newNoteTitle}
-                    onChange={(e) => {
-                      if (isCreating) {
-                        setNewNoteTitle(e.target.value);
-                        setSaveError(null);
-                      }
-                    }}
-                    className="w-full px-4 py-3 bg-card rounded-2xl border border-border/50 text-foreground text-lg font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    readOnly={!!selectedNote}
-                  />
-                  <textarea
-                    placeholder="Start writing your thoughts...
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Editor */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <input
+                      type="text"
+                      placeholder="Note title..."
+                      value={selectedNote?.title || newNoteTitle}
+                      onChange={(e) => {
+                        if (isCreating) {
+                          setNewNoteTitle(e.target.value);
+                          setSaveError(null);
+                        }
+                      }}
+                      className="w-full px-5 py-4 glass rounded-2xl text-foreground text-xl font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-200"
+                      readOnly={!!selectedNote}
+                    />
+                    <textarea
+                      placeholder="Start writing your thoughts...
 
 Try writing about:
 • A concept you're trying to understand
 • Something interesting you learned
 • Notes from a book, video, or lecture"
-                    value={selectedNote?.content || newNoteContent}
-                    onChange={(e) => {
-                      if (isCreating) {
-                        setNewNoteContent(e.target.value);
-                        setSaveError(null);
-                      }
-                    }}
-                    className="w-full h-64 px-4 py-3 bg-card rounded-2xl border border-border/50 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    readOnly={!!selectedNote}
-                  />
+                      value={selectedNote?.content || newNoteContent}
+                      onChange={(e) => {
+                        if (isCreating) {
+                          setNewNoteContent(e.target.value);
+                          setSaveError(null);
+                        }
+                      }}
+                      className="w-full h-72 px-5 py-4 glass rounded-2xl text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-violet-200 leading-relaxed"
+                      readOnly={!!selectedNote}
+                    />
 
-                  {/* AI Actions */}
-                  <div className="flex flex-wrap gap-3">
-                    <Button 
-                      variant="soft" 
-                      onClick={handleExtractConcepts}
-                      disabled={isExtracting || !(selectedNote?.content || newNoteContent)}
-                      data-tutorial="extract-concepts"
-                    >
-                      {isExtracting ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-4 h-4 mr-2" />
-                      )}
-                      Extract Concepts
-                    </Button>
-                    <Button 
-                      variant="soft" 
-                      onClick={handleSummarize}
-                      disabled={isSummarizing || !(selectedNote?.content || newNoteContent)}
-                    >
-                      {isSummarizing ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <BookOpen className="w-4 h-4 mr-2" />
-                      )}
-                      Summarize
-                    </Button>
-                    {isCreating && (
+                    {/* AI Actions */}
+                    <div className="flex flex-wrap gap-3">
                       <Button 
-                        variant="hero" 
-                        onClick={handleSaveNote}
-                        disabled={isSaving}
-                        className="ml-auto"
+                        variant="outline" 
+                        className="rounded-full"
+                        onClick={handleExtractConcepts}
+                        disabled={isExtracting || !(selectedNote?.content || newNoteContent)}
+                        data-tutorial="extract-concepts"
                       >
-                        {isSaving ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Saving...
-                          </>
+                        {isExtracting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
-                          <>
-                            <Save className="w-4 h-4 mr-2" />
-                            Save Note
-                          </>
+                          <Sparkles className="w-4 h-4 mr-2" />
                         )}
+                        Extract Concepts
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        className="rounded-full"
+                        onClick={handleSummarize}
+                        disabled={isSummarizing || !(selectedNote?.content || newNoteContent)}
+                      >
+                        {isSummarizing ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <BookOpen className="w-4 h-4 mr-2" />
+                        )}
+                        Summarize
+                      </Button>
+                      {isCreating && (
+                        <Button 
+                          className="btn-primary ml-auto"
+                          onClick={handleSaveNote}
+                          disabled={isSaving}
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save Note
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Hint */}
+                    {isCreating && extractedConcepts.length === 0 && newNoteContent.length > 50 && (
+                      <div className="glass rounded-2xl p-4">
+                        <p className="text-sm text-muted-foreground">
+                          <Lightbulb className="w-4 h-4 inline mr-2 text-amber-500" />
+                          Tip: Click "Extract Concepts" to see key ideas, or just save and we'll extract them automatically!
+                        </p>
+                      </div>
                     )}
                   </div>
 
-                  {/* Hint about auto-extraction */}
-                  {isCreating && extractedConcepts.length === 0 && newNoteContent.length > 50 && (
-                    <div className="p-3 bg-accent/30 rounded-xl">
-                      <p className="text-sm text-muted-foreground">
-                        <Lightbulb className="w-4 h-4 inline mr-1 text-primary" />
-                        Tip: Click "Extract Concepts" to see key ideas, or just save and we'll try to extract them automatically!
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* AI Panel */}
-                <div className="space-y-4">
-                  {/* Summary */}
-                  {summary && (
-                    <div className="p-4 bg-card rounded-2xl border border-border/50">
-                      <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-primary" />
-                        AI Summary
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{summary}</p>
-                    </div>
-                  )}
-
-                  {/* Extracted Concepts */}
-                  {extractedConcepts.length > 0 && (
-                    <div className="p-4 bg-card rounded-2xl border border-border/50">
-                      <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" />
-                        Key Concepts ({extractedConcepts.length})
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {extractedConcepts.map((concept) => (
-                          <button
-                            key={concept}
-                            onClick={() => handleGetExplanationPrompt(concept)}
-                            className="px-3 py-1.5 text-sm bg-primary/10 text-foreground rounded-full hover:bg-primary/20 transition-colors"
-                          >
-                            {concept}
-                          </button>
-                        ))}
+                  {/* AI Panel */}
+                  <div className="space-y-4">
+                    {/* Summary */}
+                    {summary && (
+                      <div className="glass rounded-2xl p-5">
+                        <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-violet-500" />
+                          AI Summary
+                        </h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{summary}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-3">
-                        These will appear in your Concept Map when you save!
-                      </p>
-                    </div>
-                  )}
+                    )}
 
-                  {/* AI Explanation Prompt */}
-                  {(aiPrompt || isLoadingPrompt) && (
-                    <div className="p-4 bg-accent/30 rounded-2xl border border-accent/50">
-                      <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                        <Lightbulb className="w-4 h-4 text-primary" />
-                        Try explaining...
-                      </h3>
-                      {isLoadingPrompt ? (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span className="text-sm">Generating prompt...</span>
+                    {/* Extracted Concepts */}
+                    {extractedConcepts.length > 0 && (
+                      <div className="glass rounded-2xl p-5">
+                        <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-violet-500" />
+                          Key Concepts ({extractedConcepts.length})
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {extractedConcepts.map((concept, i) => (
+                            <button
+                              key={concept}
+                              onClick={() => handleGetExplanationPrompt(concept)}
+                              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-all hover:scale-105
+                                ${i % 4 === 0 ? 'bubble-blue' : ''}
+                                ${i % 4 === 1 ? 'bubble-green' : ''}
+                                ${i % 4 === 2 ? 'bubble-pink' : ''}
+                                ${i % 4 === 3 ? 'bubble-purple' : ''}
+                              `}
+                            >
+                              {concept}
+                            </button>
+                          ))}
                         </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">{aiPrompt}</p>
-                      )}
-                    </div>
-                  )}
+                        <p className="text-xs text-muted-foreground mt-4">
+                          These will appear in your Concept Map when you save!
+                        </p>
+                      </div>
+                    )}
 
-                  {/* Empty State */}
-                  {!summary && extractedConcepts.length === 0 && !aiPrompt && (
-                    <div className="p-6 bg-muted/30 rounded-2xl border border-dashed border-border/50 text-center">
-                      <Sparkles className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        Write some content, then use AI to extract concepts and create summaries
-                      </p>
-                    </div>
-                  )}
+                    {/* AI Explanation Prompt */}
+                    {(aiPrompt || isLoadingPrompt) && (
+                      <div className="glass rounded-2xl p-5 border-2 border-violet-100">
+                        <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4 text-amber-500" />
+                          Try explaining...
+                        </h3>
+                        {isLoadingPrompt ? (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-sm">Generating prompt...</span>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground font-display-italic">{aiPrompt}</p>
+                        )}
+                      </div>
+                    )}
 
-                  {/* Concept Map hint */}
-                  {isCreating && extractedConcepts.length > 0 && (
-                    <div className="p-4 bg-sage/10 rounded-2xl border border-sage/30">
-                      <div className="flex items-start gap-2">
-                        <Network className="w-4 h-4 text-sage mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Ready for your Concept Map!</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Save this note to see these {extractedConcepts.length} concepts visualized with AI-discovered connections.
-                          </p>
+                    {/* Empty State */}
+                    {!summary && extractedConcepts.length === 0 && !aiPrompt && (
+                      <div className="glass rounded-2xl p-6 text-center border-2 border-dashed border-muted">
+                        <Sparkles className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+                          Write content, then use AI to extract concepts and create summaries
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Ready hint */}
+                    {isCreating && extractedConcepts.length > 0 && (
+                      <div className="glass rounded-2xl p-5 border-2 border-emerald-100 bg-emerald-50/50">
+                        <div className="flex items-start gap-3">
+                          <Network className="w-5 h-5 text-emerald-600 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Ready for your Concept Map!</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Save this note to see these {extractedConcepts.length} concepts visualized.
+            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </main>
     </div>

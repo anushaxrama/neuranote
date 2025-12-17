@@ -12,6 +12,8 @@ import Review from "./pages/Review";
 import Insights from "./pages/Insights";
 import AppSettings from "./pages/AppSettings";
 import About from "./pages/About";
+import Science from "./pages/Science";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 import { Tutorial } from "./components/Tutorial";
 
@@ -22,8 +24,9 @@ const TutorialWrapper = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Only show tutorial on app pages (not landing page "/")
-    const isAppPage = location.pathname !== "/" && location.pathname !== "/about";
+    // Only show tutorial on app pages (not landing page or info pages)
+    const infoPages = ["/", "/about", "/science", "/pricing"];
+    const isAppPage = !infoPages.includes(location.pathname);
     const tutorialComplete = localStorage.getItem("neuranoteTutorialComplete");
     
     if (isAppPage && !tutorialComplete) {
@@ -57,6 +60,8 @@ const App = () => (
           <Route path="/insights" element={<Insights />} />
           <Route path="/settings" element={<AppSettings />} />
           <Route path="/about" element={<About />} />
+          <Route path="/science" element={<Science />} />
+          <Route path="/pricing" element={<Pricing />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
