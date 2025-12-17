@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   ChevronRight, X, Sparkles, FileText, 
-  Network, RefreshCw, BarChart3, Rocket
+  Network, RefreshCw, BarChart3, Rocket, ChevronLeft
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -14,6 +14,8 @@ interface TutorialStep {
   targetPage: string;
   elementSelector: string | null;
   arrowDirection: "left" | "right" | "up" | "down" | "none";
+  extraEmphasis?: boolean;
+  label?: string;
 }
 
 const tutorialSteps: TutorialStep[] = [
@@ -46,12 +48,14 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 4,
-    title: "Create a New Note",
-    description: "Click this button to write your first note. Try writing about something you're curious about!",
+    title: "👆 Click 'New Note' to Start!",
+    description: "This purple button creates a new note. Click it to write about something you're curious about!",
     icon: <FileText className="w-5 h-5 text-lavender" />,
     targetPage: "/notes",
     elementSelector: "[data-tutorial='new-note']",
-    arrowDirection: "down",
+    arrowDirection: "up",
+    extraEmphasis: true,
+    label: "CLICK HERE",
   },
   {
     id: 5,
@@ -141,8 +145,8 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
       setElementRect(rect);
 
       const tooltipWidth = 350;
-      const tooltipHeight = 200;
-      const padding = 20;
+      const tooltipHeight = 220;
+      const padding = 24;
 
       let top = 0;
       let left = 0;
@@ -151,21 +155,21 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
         case "left":
           // Tooltip on the right of element
           top = rect.top + rect.height / 2 - tooltipHeight / 2;
-          left = rect.right + padding;
+          left = rect.right + padding + 60; // Extra space for arrow
           break;
         case "right":
           // Tooltip on the left of element
           top = rect.top + rect.height / 2 - tooltipHeight / 2;
-          left = rect.left - tooltipWidth - padding;
+          left = rect.left - tooltipWidth - padding - 60;
           break;
         case "up":
           // Tooltip below element
-          top = rect.bottom + padding;
+          top = rect.bottom + padding + 80; // Extra space for arrow and label
           left = rect.left + rect.width / 2 - tooltipWidth / 2;
           break;
         case "down":
           // Tooltip above element
-          top = rect.top - tooltipHeight - padding;
+          top = rect.top - tooltipHeight - padding - 60;
           left = rect.left + rect.width / 2 - tooltipWidth / 2;
           break;
         default:
@@ -175,7 +179,7 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
 
       // Keep tooltip in viewport
       top = Math.max(20, Math.min(top, window.innerHeight - tooltipHeight - 20));
-      left = Math.max(20, Math.min(left, window.innerWidth - tooltipWidth - 20));
+      left = Math.max(280, Math.min(left, window.innerWidth - tooltipWidth - 20));
 
       setTooltipPosition({ top, left });
       setIsPositioned(true);
@@ -216,103 +220,6 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleNext, currentStep]);
 
-  // Arrow SVG component
-  const Arrow = () => {
-    if (!elementRect || step.arrowDirection === "none") return null;
-
-    const arrowSize = 60;
-    let arrowStyle: React.CSSProperties = {
-      position: "fixed",
-      zIndex: 9998,
-      pointerEvents: "none",
-    };
-
-    // Calculate arrow position based on direction
-    switch (step.arrowDirection) {
-      case "left":
-        arrowStyle = {
-          ...arrowStyle,
-          top: elementRect.top + elementRect.height / 2 - arrowSize / 2,
-          left: elementRect.right + 5,
-        };
-        return (
-          <div style={arrowStyle} className="animate-bounce-horizontal">
-            <svg width={arrowSize} height={arrowSize} viewBox="0 0 60 60">
-              <path
-                d="M5 30 L45 30 M35 20 L45 30 L35 40"
-                stroke="hsl(var(--primary))"
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        );
-      case "right":
-        arrowStyle = {
-          ...arrowStyle,
-          top: elementRect.top + elementRect.height / 2 - arrowSize / 2,
-          left: elementRect.left - arrowSize - 5,
-        };
-        return (
-          <div style={arrowStyle} className="animate-bounce-horizontal">
-            <svg width={arrowSize} height={arrowSize} viewBox="0 0 60 60">
-              <path
-                d="M55 30 L15 30 M25 20 L15 30 L25 40"
-                stroke="hsl(var(--primary))"
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        );
-      case "down":
-        arrowStyle = {
-          ...arrowStyle,
-          top: elementRect.top - arrowSize - 5,
-          left: elementRect.left + elementRect.width / 2 - arrowSize / 2,
-        };
-        return (
-          <div style={arrowStyle} className="animate-bounce">
-            <svg width={arrowSize} height={arrowSize} viewBox="0 0 60 60">
-              <path
-                d="M30 5 L30 45 M20 35 L30 45 L40 35"
-                stroke="hsl(var(--primary))"
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        );
-      case "up":
-        arrowStyle = {
-          ...arrowStyle,
-          top: elementRect.bottom + 5,
-          left: elementRect.left + elementRect.width / 2 - arrowSize / 2,
-        };
-        return (
-          <div style={arrowStyle} className="animate-bounce">
-            <svg width={arrowSize} height={arrowSize} viewBox="0 0 60 60">
-              <path
-                d="M30 55 L30 15 M20 25 L30 15 L40 25"
-                stroke="hsl(var(--primary))"
-                strokeWidth="4"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        );
-    }
-    return null;
-  };
-
   if (!isPositioned) return null;
 
   return (
@@ -323,57 +230,162 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
           0%, 100% { transform: translateX(0); }
           50% { transform: translateX(10px); }
         }
+        @keyframes bounce-vertical {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes pulse-ring {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes label-bounce {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(-5px); }
+        }
         .animate-bounce-horizontal {
           animation: bounce-horizontal 1s ease-in-out infinite;
         }
-        [data-tutorial-highlight="true"] {
-          position: relative;
-          z-index: 9997 !important;
-          outline: 3px solid hsl(var(--primary)) !important;
-          outline-offset: 4px !important;
-          border-radius: 12px;
-          box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 30px 10px hsl(var(--primary) / 0.4) !important;
+        .animate-bounce-vertical {
+          animation: bounce-vertical 1s ease-in-out infinite;
+        }
+        .animate-pulse-ring {
+          animation: pulse-ring 1.5s ease-in-out infinite;
+        }
+        .animate-label-bounce {
+          animation: label-bounce 1s ease-in-out infinite;
         }
       `}</style>
 
       {/* Backdrop */}
-      {step.elementSelector && elementRect && (
-        <div 
-          className="fixed inset-0 z-[9996] pointer-events-none"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-        >
-          {/* Cutout for highlighted element */}
+      <div 
+        className="fixed inset-0 z-[9996] pointer-events-none"
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+      />
+
+      {/* Cutout for highlighted element */}
+      {elementRect && (
+        <>
+          {/* Main highlight box */}
           <div
-            className="absolute bg-transparent"
+            className="fixed z-[9997] pointer-events-none rounded-2xl animate-pulse-ring"
             style={{
               top: elementRect.top - 8,
               left: elementRect.left - 8,
               width: elementRect.width + 16,
               height: elementRect.height + 16,
-              boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.5)",
-              borderRadius: "16px",
+              backgroundColor: "transparent",
+              boxShadow: `
+                0 0 0 4px hsl(var(--primary)),
+                0 0 0 9999px rgba(0, 0, 0, 0.6),
+                0 0 40px 15px hsl(var(--primary) / 0.5)
+              `,
             }}
           />
-        </div>
-      )}
 
-      {/* Highlight ring around element */}
-      {elementRect && (
-        <div
-          className="fixed z-[9997] pointer-events-none rounded-2xl animate-pulse"
-          style={{
-            top: elementRect.top - 6,
-            left: elementRect.left - 6,
-            width: elementRect.width + 12,
-            height: elementRect.height + 12,
-            border: "3px solid hsl(var(--primary))",
-            boxShadow: "0 0 20px 5px hsl(var(--primary) / 0.5)",
-          }}
-        />
-      )}
+          {/* Extra emphasis label for New Note button */}
+          {step.extraEmphasis && step.label && (
+            <div
+              className="fixed z-[9999] pointer-events-none animate-label-bounce"
+              style={{
+                top: elementRect.top - 45,
+                left: elementRect.left + elementRect.width / 2,
+                transform: "translateX(-50%)",
+              }}
+            >
+              <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full font-bold text-sm shadow-lg whitespace-nowrap">
+                {step.label}
+                <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-primary" />
+              </div>
+            </div>
+          )}
 
-      {/* Arrow pointing to element */}
-      <Arrow />
+          {/* Arrow pointing to element */}
+          {step.arrowDirection === "left" && (
+            <div
+              className="fixed z-[9998] pointer-events-none animate-bounce-horizontal"
+              style={{
+                top: elementRect.top + elementRect.height / 2 - 30,
+                left: elementRect.right + 8,
+              }}
+            >
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <path
+                  d="M5 30 L45 30 M35 20 L45 30 L35 40"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          )}
+
+          {step.arrowDirection === "up" && (
+            <div
+              className="fixed z-[9998] pointer-events-none animate-bounce-vertical"
+              style={{
+                top: elementRect.bottom + 8,
+                left: elementRect.left + elementRect.width / 2 - 30,
+              }}
+            >
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <path
+                  d="M30 55 L30 15 M20 25 L30 15 L40 25"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          )}
+
+          {step.arrowDirection === "down" && (
+            <div
+              className="fixed z-[9998] pointer-events-none animate-bounce-vertical"
+              style={{
+                top: elementRect.top - 68,
+                left: elementRect.left + elementRect.width / 2 - 30,
+              }}
+            >
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <path
+                  d="M30 5 L30 45 M20 35 L30 45 L40 35"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          )}
+
+          {step.arrowDirection === "right" && (
+            <div
+              className="fixed z-[9998] pointer-events-none animate-bounce-horizontal"
+              style={{
+                top: elementRect.top + elementRect.height / 2 - 30,
+                left: elementRect.left - 68,
+              }}
+            >
+              <svg width="60" height="60" viewBox="0 0 60 60">
+                <path
+                  d="M55 30 L15 30 M25 20 L15 30 L25 40"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Tutorial Card */}
       <div
@@ -416,6 +428,15 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
               </button>
             </div>
 
+            {/* Extra hint for New Note step */}
+            {step.extraEmphasis && (
+              <div className="mb-4 p-3 bg-primary/10 rounded-xl border border-primary/20">
+                <p className="text-sm text-primary font-medium text-center">
+                  👆 Look for the purple "New Note" button above!
+                </p>
+              </div>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-between pt-3 border-t border-border/50">
               <div className="flex items-center gap-3">
@@ -430,6 +451,7 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
                     size="sm"
                     onClick={() => setCurrentStep(currentStep - 1)}
                   >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
                     Back
                   </Button>
                 )}
