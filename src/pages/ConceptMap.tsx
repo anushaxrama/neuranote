@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -34,10 +34,10 @@ interface ConceptGroup {
   id: number;
   name: string;
   concepts: string[];
-  x: number;
-  y: number;
-  radius: number;
   color: GroupColor;
+  centerX?: number;
+  centerY?: number;
+  radius?: number;
 }
 
 interface GroupColor {
@@ -45,77 +45,104 @@ interface GroupColor {
   bgSolid: string;
   border: string;
   text: string;
-  textDark: string;
   line: string;
+  labelBg: string;
 }
 
-// Distinct, soft pastel colors for group zones - like the reference image
+// Clean, distinct color palette
 const groupColors: GroupColor[] = [
   { 
-    bg: 'rgba(251, 207, 232, 0.5)', // pink
-    bgSolid: '#fce7f3',
-    border: '#f9a8d4',
-    text: '#be185d',
-    textDark: '#9d174d',
-    line: '#ec4899',
-  },
-  { 
-    bg: 'rgba(209, 250, 229, 0.5)', // green
-    bgSolid: '#d1fae5',
-    border: '#6ee7b7',
-    text: '#047857',
-    textDark: '#065f46',
-    line: '#10b981',
-  },
-  { 
-    bg: 'rgba(221, 214, 254, 0.5)', // violet
-    bgSolid: '#ede9fe',
-    border: '#a78bfa',
-    text: '#6d28d9',
-    textDark: '#5b21b6',
-    line: '#8b5cf6',
-  },
-  { 
-    bg: 'rgba(254, 243, 199, 0.5)', // amber
-    bgSolid: '#fef3c7',
-    border: '#fcd34d',
-    text: '#b45309',
-    textDark: '#92400e',
-    line: '#f59e0b',
-  },
-  { 
-    bg: 'rgba(207, 250, 254, 0.5)', // cyan
-    bgSolid: '#cffafe',
-    border: '#67e8f9',
-    text: '#0e7490',
-    textDark: '#155e75',
-    line: '#06b6d4',
-  },
-  { 
-    bg: 'rgba(254, 215, 170, 0.5)', // orange
-    bgSolid: '#fed7aa',
-    border: '#fdba74',
-    text: '#c2410c',
-    textDark: '#9a3412',
-    line: '#f97316',
-  },
-  { 
-    bg: 'rgba(191, 219, 254, 0.5)', // blue
+    bg: 'rgba(191, 219, 254, 0.3)',
     bgSolid: '#dbeafe',
-    border: '#93c5fd',
-    text: '#1d4ed8',
-    textDark: '#1e40af',
+    border: '#3b82f6',
+    text: '#1e40af',
     line: '#3b82f6',
+    labelBg: '#dbeafe',
   },
   { 
-    bg: 'rgba(233, 213, 255, 0.5)', // purple
-    bgSolid: '#f3e8ff',
-    border: '#d8b4fe',
-    text: '#7e22ce',
-    textDark: '#6b21a8',
-    line: '#a855f7',
+    bg: 'rgba(187, 247, 208, 0.3)',
+    bgSolid: '#dcfce7',
+    border: '#22c55e',
+    text: '#166534',
+    line: '#22c55e',
+    labelBg: '#dcfce7',
+  },
+  { 
+    bg: 'rgba(254, 202, 202, 0.3)',
+    bgSolid: '#fee2e2',
+    border: '#ef4444',
+    text: '#991b1b',
+    line: '#ef4444',
+    labelBg: '#fee2e2',
+  },
+  { 
+    bg: 'rgba(221, 214, 254, 0.3)',
+    bgSolid: '#ede9fe',
+    border: '#8b5cf6',
+    text: '#5b21b6',
+    line: '#8b5cf6',
+    labelBg: '#ede9fe',
+  },
+  { 
+    bg: 'rgba(254, 215, 170, 0.3)',
+    bgSolid: '#ffedd5',
+    border: '#f97316',
+    text: '#9a3412',
+    line: '#f97316',
+    labelBg: '#ffedd5',
+  },
+  { 
+    bg: 'rgba(165, 243, 252, 0.3)',
+    bgSolid: '#cffafe',
+    border: '#06b6d4',
+    text: '#155e75',
+    line: '#06b6d4',
+    labelBg: '#cffafe',
   },
 ];
+
+// Semantic clustering
+const conceptCategories: { name: string; keywords: string[] }[] = [
+  { name: "Memory", keywords: ["memory", "storage", "retention", "recall", "recollection", "recognition", "familiarity", "remember", "duration"] },
+  { name: "Encoding", keywords: ["encoding", "encode", "processing", "depth", "shallow", "deep", "semantic", "phonemic", "structural", "levels"] },
+  { name: "Learning", keywords: ["study", "learning", "practice", "testing", "self-test", "flashcard", "session", "spaced", "spacing", "repetition", "active", "retrieval", "improved"] },
+  { name: "Cognitive", keywords: ["understanding", "comprehension", "transform", "context", "meaning", "concept", "knowledge", "metacognition", "misconception"] },
+];
+
+const clusterConcepts = (concepts: string[]): ConceptGroup[] => {
+  const groups: ConceptGroup[] = [];
+  const assigned = new Set<string>();
+  
+  conceptCategories.forEach((category) => {
+    const matching = concepts.filter(concept => {
+      if (assigned.has(concept)) return false;
+      const lower = concept.toLowerCase();
+      return category.keywords.some(kw => lower.includes(kw));
+    });
+    
+    if (matching.length > 0) {
+      matching.forEach(c => assigned.add(c));
+      groups.push({
+        id: groups.length,
+        name: category.name,
+        concepts: matching,
+        color: groupColors[groups.length % groupColors.length],
+      });
+    }
+  });
+  
+  const remaining = concepts.filter(c => !assigned.has(c));
+  if (remaining.length > 0) {
+    groups.push({
+      id: groups.length,
+      name: "Other",
+      concepts: remaining,
+      color: groupColors[groups.length % groupColors.length],
+    });
+  }
+  
+  return groups;
+};
 
 const getStoredConcepts = (): string[] => {
   try {
@@ -131,233 +158,237 @@ const getStoredNotes = (): any[] => {
   } catch { return []; }
 };
 
-// Group concepts by which note they came from (concepts from same note are grouped)
-const groupConceptsByNote = (conceptLabels: string[], notes: any[]): ConceptGroup[] => {
-  const groups: ConceptGroup[] = [];
-  const assigned = new Set<string>();
+// Calculate bubble size - bigger bubbles for longer labels
+const calculateBubbleSize = (label: string, index: number): number => {
+  const words = label.split(/[\s-]+/);
+  const longestWord = Math.max(...words.map(w => w.length));
   
-  // First, group by note origin
-  notes.forEach((note, noteIdx) => {
-    const noteConcepts = (note.concepts || []).filter((c: string) => 
-      conceptLabels.includes(c) && !assigned.has(c)
-    );
-    
-    if (noteConcepts.length === 0) return;
-    
-    noteConcepts.forEach((c: string) => assigned.add(c));
-    
-    const groupId = groups.length;
-    const color = groupColors[groupId % groupColors.length];
-    
-    // Position groups in a circular layout around center
-    const totalGroups = Math.max(notes.filter(n => (n.concepts || []).length > 0).length, 1);
-    const angle = (groupId / totalGroups) * 2 * Math.PI - Math.PI / 2;
-    const radius = totalGroups > 1 ? 30 : 0;
-    
-    groups.push({
-      id: groupId,
-      name: note.title || `Topic ${groupId + 1}`,
-      concepts: noteConcepts,
-      x: 50 + Math.cos(angle) * radius,
-      y: 50 + Math.sin(angle) * radius,
-      radius: Math.max(15, 10 + noteConcepts.length * 4),
-      color,
-    });
-  });
+  // Size based on longest word to ensure it fits
+  const baseSize = 50 + longestWord * 4;
+  const variety = ((index * 7) % 4) * 5;
   
-  // Add any unassigned concepts to an "Other" group
-  const unassigned = conceptLabels.filter(c => !assigned.has(c));
-  if (unassigned.length > 0) {
-    const groupId = groups.length;
-    const color = groupColors[groupId % groupColors.length];
-    const angle = (groupId / (groups.length + 1)) * 2 * Math.PI - Math.PI / 2;
-    
-    groups.push({
-      id: groupId,
-      name: "Other Concepts",
-      concepts: unassigned,
-      x: 50 + Math.cos(angle) * 30,
-      y: 50 + Math.sin(angle) * 30,
-      radius: Math.max(15, 10 + unassigned.length * 4),
-      color,
-    });
-  }
-  
-  return groups;
+  return Math.max(55, Math.min(95, baseSize + variety));
 };
 
-// Position concepts within their group zones
-const positionConceptsInGroups = (groups: ConceptGroup[], notes: any[]): Concept[] => {
-  const concepts: Concept[] = [];
+// Force-directed layout
+const forceDirectedLayout = (
+  nodes: { id: string; size: number; groupId: number }[],
+  groups: ConceptGroup[],
+  width: number,
+  height: number
+): { positions: Map<string, { x: number; y: number }>; groupData: Map<number, { cx: number; cy: number; r: number }> } => {
+  const positions = new Map<string, { x: number; y: number }>();
+  const groupData = new Map<number, { cx: number; cy: number; r: number }>();
   
-  // Count occurrences for sizing
-  const conceptCounts: Record<string, number> = {};
-  notes.forEach(note => {
-    (note.concepts || []).forEach((c: string) => {
-      conceptCounts[c] = (conceptCounts[c] || 0) + 1;
-    });
+  const groupSizes = new Map<number, number>();
+  groups.forEach(g => {
+    const baseRadius = 90 + Math.sqrt(g.concepts.length) * 50;
+    groupSizes.set(g.id, baseRadius);
   });
   
-  groups.forEach(group => {
-    const numConcepts = group.concepts.length;
+  const totalSize = Array.from(groupSizes.values()).reduce((a, b) => a + b, 0);
+  let currentAngle = -Math.PI / 2;
+  
+  const groupCenters = new Map<number, { x: number; y: number }>();
+  groups.forEach((g) => {
+    const size = groupSizes.get(g.id) || 100;
+    const angleSpan = (size / totalSize) * Math.PI * 2;
+    const angle = currentAngle + angleSpan / 2;
+    currentAngle += angleSpan;
     
-    group.concepts.forEach((label, idx) => {
-      // Position concepts in a circular pattern within the group
-      const angle = (idx / numConcepts) * 2 * Math.PI - Math.PI / 2;
-      const conceptRadius = numConcepts > 1 ? group.radius * 0.5 : 0;
-      
-      const x = group.x + Math.cos(angle) * conceptRadius;
-      const y = group.y + Math.sin(angle) * conceptRadius;
-      
-      // Size based on frequency
-      const count = conceptCounts[label] || 1;
-      const size = Math.min(70, 40 + count * 6);
-      
-      concepts.push({
-        id: concepts.length + 1,
-        label,
-        x: Math.max(8, Math.min(92, x)),
-        y: Math.max(8, Math.min(92, y)),
-        size,
-        groupId: group.id,
-        noteCount: count,
-      });
+    const distFromCenter = Math.min(width, height) * 0.26;
+    groupCenters.set(g.id, {
+      x: width / 2 + Math.cos(angle) * distFromCenter,
+      y: height / 2 + Math.sin(angle) * distFromCenter,
     });
   });
   
-  return concepts;
+  nodes.forEach((node, i) => {
+    const center = groupCenters.get(node.groupId) || { x: width / 2, y: height / 2 };
+    const angle = (i / nodes.length) * Math.PI * 2;
+    const offset = 25 + Math.random() * 35;
+    positions.set(node.id, {
+      x: center.x + Math.cos(angle) * offset,
+      y: center.y + Math.sin(angle) * offset,
+    });
+  });
+
+  // Force simulation
+  for (let iter = 0; iter < 100; iter++) {
+    const forces = new Map<string, { fx: number; fy: number }>();
+    nodes.forEach(n => forces.set(n.id, { fx: 0, fy: 0 }));
+
+    // Repulsion
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const posA = positions.get(a.id)!;
+        const posB = positions.get(b.id)!;
+        
+        const dx = posB.x - posA.x;
+        const dy = posB.y - posA.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const minDist = (a.size + b.size) / 2 + 12;
+        
+        if (dist < minDist * 2) {
+          const force = (minDist * 2 - dist) * 0.15;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          
+          forces.get(a.id)!.fx -= fx;
+          forces.get(a.id)!.fy -= fy;
+          forces.get(b.id)!.fx += fx;
+          forces.get(b.id)!.fy += fy;
+        }
+      }
+    }
+
+    // Attraction to group center
+    nodes.forEach(node => {
+      const pos = positions.get(node.id)!;
+      const center = groupCenters.get(node.groupId)!;
+      forces.get(node.id)!.fx += (center.x - pos.x) * 0.02;
+      forces.get(node.id)!.fy += (center.y - pos.y) * 0.02;
+    });
+
+    // Apply forces
+    nodes.forEach(node => {
+      const pos = positions.get(node.id)!;
+      const force = forces.get(node.id)!;
+      const padding = node.size / 2 + 15;
+      pos.x = Math.max(padding, Math.min(width - padding, pos.x + force.fx * 0.8));
+      pos.y = Math.max(padding, Math.min(height - padding, pos.y + force.fy * 0.8));
+    });
+  }
+
+  // Calculate group bounds
+  groups.forEach(group => {
+    const groupNodes = nodes.filter(n => n.groupId === group.id);
+    if (groupNodes.length === 0) return;
+    
+    const xs = groupNodes.map(n => positions.get(n.id)!.x);
+    const ys = groupNodes.map(n => positions.get(n.id)!.y);
+    const sizes = groupNodes.map(n => n.size);
+    
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    
+    let maxDist = 0;
+    groupNodes.forEach((n, i) => {
+      const pos = positions.get(n.id)!;
+      const dist = Math.sqrt((pos.x - cx) ** 2 + (pos.y - cy) ** 2) + sizes[i] / 2;
+      maxDist = Math.max(maxDist, dist);
+    });
+    
+    groupData.set(group.id, { cx, cy, r: maxDist + 40 });
+  });
+
+  return { positions, groupData };
 };
 
 const ConceptMap = () => {
   const [storedConcepts, setStoredConcepts] = useState<string[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<ConceptGroup | null>(null);
   const [aiConnections, setAiConnections] = useState<Connection[]>([]);
   const [isLoadingConnections, setIsLoadingConnections] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [hoveredConnection, setHoveredConnection] = useState<Connection | null>(null);
+  const [zoom, setZoom] = useState(0.85);
+  const [hoveredConcept, setHoveredConcept] = useState<string | null>(null);
+
+  const canvasSize = { width: 1100, height: 900 };
 
   useEffect(() => {
     setStoredConcepts(getStoredConcepts());
     setNotes(getStoredNotes());
   }, []);
 
-  // Group concepts by note
-  const groups = useMemo(() => 
-    groupConceptsByNote(storedConcepts, notes), 
-    [storedConcepts, notes]
-  );
+  const groups = useMemo(() => clusterConcepts(storedConcepts), [storedConcepts]);
 
-  const concepts = useMemo(() => 
-    positionConceptsInGroups(groups, notes), 
-    [groups, notes]
-  );
+  const { concepts, groupsWithBounds } = useMemo(() => {
+    if (storedConcepts.length === 0) return { concepts: [], groupsWithBounds: [] };
+
+    const conceptCounts: Record<string, number> = {};
+    notes.forEach(note => {
+      (note.concepts || []).forEach((c: string) => {
+        conceptCounts[c] = (conceptCounts[c] || 0) + 1;
+      });
+    });
+
+    const nodes = storedConcepts.map((label, index) => {
+      const groupId = groups.findIndex(g => g.concepts.includes(label));
+      return {
+        id: label,
+        size: calculateBubbleSize(label, index),
+        groupId: groupId >= 0 ? groupId : 0,
+      };
+    });
+
+    const { positions, groupData } = forceDirectedLayout(nodes, groups, canvasSize.width, canvasSize.height);
+
+    const conceptList = nodes.map((node, idx) => {
+      const pos = positions.get(node.id)!;
+      return {
+        id: idx + 1,
+        label: node.id,
+        x: pos.x,
+        y: pos.y,
+        size: node.size,
+        groupId: node.groupId,
+        noteCount: conceptCounts[node.id] || 1,
+      };
+    });
+
+    return { 
+      concepts: conceptList, 
+      groupsWithBounds: groups.map(g => ({ ...g, ...groupData.get(g.id) }))
+    };
+  }, [storedConcepts, notes, groups]);
 
   useEffect(() => {
-    if (storedConcepts.length >= 2) {
-      loadConnections();
-    }
+    if (storedConcepts.length >= 2) loadConnections();
   }, [storedConcepts]);
 
   const loadConnections = async () => {
     if (storedConcepts.length < 2) return;
-    
     setIsLoadingConnections(true);
     try {
       const connections = await suggestConnections(storedConcepts);
-      const enhancedConnections = connections.map((conn, i) => ({
+      setAiConnections(connections.map((conn, i) => ({
         ...conn,
         strength: 0.5 + (0.5 * (1 - i / connections.length))
-      }));
-      setAiConnections(enhancedConnections);
+      })));
     } catch (error) {
-      console.error("Error loading connections:", error);
-      const fallbackConnections: Connection[] = [];
-      for (let i = 0; i < Math.min(storedConcepts.length - 1, 6); i++) {
-        fallbackConnections.push({
-          from: storedConcepts[i],
-          to: storedConcepts[(i + 1) % storedConcepts.length],
-          explanation: `These concepts share underlying principles.`,
-          strength: 0.7,
-        });
-      }
-      setAiConnections(fallbackConnections);
+      console.error("Error:", error);
     } finally {
       setIsLoadingConnections(false);
     }
   };
 
-  const getConceptPosition = (label: string) => {
-    const concept = concepts.find(c => c.label === label);
-    return concept ? { x: concept.x, y: concept.y } : null;
-  };
-
-  const getRelatedConnections = (conceptLabel: string) => {
-    return aiConnections.filter(
-      conn => conn.from === conceptLabel || conn.to === conceptLabel
-    );
-  };
-
-  const getRelatedNotes = (conceptLabel: string): NoteInfo[] => {
-    return notes
-      .filter(note => (note.concepts || []).includes(conceptLabel))
-      .map(note => ({
-        title: note.title,
-        excerpt: note.content?.substring(0, 100) + '...' || '',
-      }));
-  };
-
-  const getGroupForConcept = (label: string) => {
-    const concept = concepts.find(c => c.label === label);
-    return concept ? concept.groupId : 0;
-  };
-
-  const getConceptColor = (concept: Concept) => {
-    return groupColors[concept.groupId % groupColors.length];
-  };
-
-  // Get main topic from notes
-  const mainTopic = useMemo(() => {
-    if (notes.length === 0) return "Your Knowledge";
-    // Find most common words or use first note title
-    return "Your Learning Topics";
-  }, [notes]);
+  const getConceptByLabel = useCallback((label: string) => concepts.find(c => c.label === label), [concepts]);
+  const getRelatedConnections = useCallback((label: string) => aiConnections.filter(c => c.from === label || c.to === label), [aiConnections]);
+  const getRelatedNotes = useCallback((label: string): NoteInfo[] => 
+    notes.filter(n => (n.concepts || []).includes(label)).map(n => ({ title: n.title, excerpt: n.content?.substring(0, 80) + '...' || '' })), [notes]);
+  const getConceptColor = useCallback((c: Concept) => groupColors[c.groupId % groupColors.length], []);
+  const isHighlighted = useCallback((conn: Connection) => {
+    const active = selectedConcept?.label || hoveredConcept;
+    return active ? (conn.from === active || conn.to === active) : false;
+  }, [selectedConcept, hoveredConcept]);
 
   return (
-    <div className="min-h-screen bg-[#FDFCFA] flex">
+    <div className="min-h-screen bg-[#f8f9fa] flex">
       <Sidebar />
-
       <main className="flex-1 relative overflow-hidden">
-        {/* Subtle background */}
-        <div className="absolute inset-0">
-          <div 
-            className="absolute inset-0 opacity-30"
-            style={{
-              background: 'radial-gradient(ellipse at 50% 50%, hsl(0 0% 98%), hsl(0 0% 96%))',
-            }}
-          />
-        </div>
-
         {storedConcepts.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center z-10 p-8">
-            <div className="text-center max-w-lg animate-fade-up">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center mx-auto mb-8 shadow-soft">
-                <Network className="w-12 h-12 text-emerald-600" />
+          <div className="absolute inset-0 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="w-20 h-20 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-6">
+                <Network className="w-10 h-10 text-blue-500" />
               </div>
-              <p className="font-display-italic text-lg text-muted-foreground mb-3">
-                Your knowledge universe
-              </p>
-              <h2 className="text-3xl font-medium text-foreground mb-4">
-                Your Concept Map<br />
-                <span className="font-display-italic">Awaits</span>
-              </h2>
-              <p className="text-muted-foreground mb-8 leading-relaxed">
-                Create notes and extract concepts to see them beautifully visualized here. 
-                AI will discover the hidden connections between your ideas.
-              </p>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-3">Your Concept Map</h2>
+              <p className="text-gray-500 mb-6">Create notes and extract concepts to visualize connections.</p>
               <Link to="/notes">
-                <Button className="btn-primary">
+                <Button className="bg-blue-500 hover:bg-blue-600 text-white">
                   <PenLine className="w-4 h-4 mr-2" />
                   Create Your First Note
                 </Button>
@@ -366,413 +397,225 @@ const ConceptMap = () => {
           </div>
         ) : (
           <>
-            {/* Main Topic Title - like in reference image */}
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 text-center animate-fade-up">
-              <h1 className="text-2xl font-semibold text-gray-700 tracking-wide uppercase">
-                {mainTopic}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {groups.length} topic{groups.length !== 1 ? 's' : ''} • {concepts.length} concepts
-              </p>
+            {/* Header */}
+            <div className="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex items-center justify-between bg-white/90 backdrop-blur-sm border-b border-gray-200">
+              <div>
+                <h1 className="text-lg font-semibold text-gray-800">Concept Map</h1>
+                <p className="text-sm text-gray-500">{groups.length} clusters · {concepts.length} concepts</p>
             </div>
-
-            {/* Controls */}
-            <div className="absolute top-6 right-6 z-20 flex gap-2">
+              <div className="flex items-center gap-3">
               {isLoadingConnections ? (
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur rounded-full text-sm shadow-sm">
-                  <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
-                  <span className="text-muted-foreground">Finding connections...</span>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Finding connections...
                 </div>
               ) : (
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur rounded-full text-sm shadow-sm">
-                  <Sparkles className="w-4 h-4 text-violet-500" />
-                  <span className="text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
                     {aiConnections.length} connections
-                  </span>
                 </div>
               )}
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="rounded-full bg-white/80 backdrop-blur border-0 shadow-sm"
-                onClick={() => setZoom(Math.min(zoom + 0.2, 2))}
-              >
+                <div className="flex items-center gap-1 ml-4 bg-gray-100 rounded-lg p-1">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setZoom(Math.max(zoom - 0.1, 0.4))}>
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setZoom(Math.min(zoom + 0.1, 1.5))}>
                 <ZoomIn className="w-4 h-4" />
               </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="rounded-full bg-white/80 backdrop-blur border-0 shadow-sm"
-                onClick={() => setZoom(Math.max(zoom - 0.2, 0.5))}
-              >
-                <ZoomOut className="w-4 h-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="rounded-full bg-white/80 backdrop-blur border-0 shadow-sm"
-                onClick={loadConnections}
-                disabled={isLoadingConnections}
-              >
+                </div>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={loadConnections} disabled={isLoadingConnections}>
                 <RefreshCw className={`w-4 h-4 ${isLoadingConnections ? 'animate-spin' : ''}`} />
               </Button>
+              </div>
             </div>
 
-            {/* Concept Map Canvas */}
-            <div 
-              className="absolute inset-0 pt-20"
-              style={{ 
-                transform: `scale(${zoom})`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.3s ease-out',
-              }}
-            >
-              {/* Group Zones - large colored circles */}
-              {groups.map((group) => {
-                const isSelected = selectedGroup?.id === group.id;
-                
+            {/* Canvas */}
+            <div className="absolute inset-0 pt-16 flex items-center justify-center overflow-hidden" onClick={() => setSelectedConcept(null)}>
+              <div style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}>
+                <svg width={canvasSize.width} height={canvasSize.height} className="overflow-visible">
+                  {/* Group circles */}
+                  {groupsWithBounds.map((group) => {
+                    if (!group.cx || !group.cy || !group.r) return null;
                 return (
-                  <div
-                    key={`group-${group.id}`}
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500"
-                    style={{
-                      left: `${group.x}%`,
-                      top: `${group.y}%`,
-                      zIndex: isSelected ? 5 : 1,
-                    }}
-                    onClick={(e) => {
-                      if (e.target === e.currentTarget) {
-                        setSelectedGroup(isSelected ? null : group);
-                        setSelectedConcept(null);
-                      }
-                    }}
-                  >
-                    {/* Group background circle */}
-                    <div
-                      className={`rounded-full transition-all duration-500 cursor-pointer
-                        ${isSelected ? 'ring-4 ring-white shadow-xl' : 'hover:shadow-lg'}
-                      `}
-                      style={{
-                        width: `${group.radius * 6}px`,
-                        height: `${group.radius * 6}px`,
-                        background: group.color.bg,
-                        border: `2px solid ${group.color.border}`,
-                        transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                      }}
-                    />
-                    
-                    {/* Group label */}
-                    <div 
-                      className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none"
-                      style={{ 
-                        top: `${group.radius * 3 + 10}px`,
-                        color: group.color.textDark,
-                      }}
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
-                        {group.name}
-                      </p>
-                      <p className="text-[10px] opacity-70">
-                        {group.concepts.length} concept{group.concepts.length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </div>
+                      <g key={`group-${group.id}`}>
+                        <circle cx={group.cx} cy={group.cy} r={group.r} fill={group.color.bg} stroke={group.color.border} strokeWidth={2} strokeOpacity={0.4} />
+                      </g>
                 );
               })}
 
-              {/* Connection Lines between concepts */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 2 }}>
-                <defs>
-                  <filter id="line-glow">
-                    <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="rgba(139, 92, 246, 0.4)" />
-                  </filter>
-                </defs>
-                
-                {/* Inter-group connections */}
+                  {/* Connections */}
                 {aiConnections.map((conn, i) => {
-                  const from = getConceptPosition(conn.from);
-                  const to = getConceptPosition(conn.to);
+                    const from = getConceptByLabel(conn.from);
+                    const to = getConceptByLabel(conn.to);
                   if (!from || !to) return null;
-                  
-                  const fromGroup = getGroupForConcept(conn.from);
-                  const toGroup = getGroupForConcept(conn.to);
-                  
-                  const isHighlighted = 
-                    selectedConcept?.label === conn.from || 
-                    selectedConcept?.label === conn.to ||
-                    hoveredConnection === conn;
-                  
-                  // Curved path
-                  const midX = (from.x + to.x) / 2;
-                  const midY = (from.y + to.y) / 2;
-                  const dx = to.x - from.x;
-                  const dy = to.y - from.y;
-                  const curve = fromGroup !== toGroup ? 0.25 : 0.1;
-                  const ctrlX = midX - dy * curve;
-                  const ctrlY = midY + dx * curve;
-                  
-                  // Use group color for same-group, purple for cross-group
-                  const lineColor = fromGroup === toGroup 
-                    ? groupColors[fromGroup % groupColors.length].line
-                    : '#8b5cf6';
+                    const hl = isHighlighted(conn);
+                    const cross = from.groupId !== to.groupId;
+                    return (
+                      <line key={i} x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                        stroke={hl ? "#4f46e5" : "#d1d5db"} strokeWidth={hl ? 2.5 : 1}
+                        strokeOpacity={hl ? 1 : 0.5} strokeDasharray={cross && !hl ? "4 2" : "none"} />
+                    );
+                  })}
+
+                  {/* Concept bubbles */}
+                  {concepts.map((concept) => {
+                    const isSelected = selectedConcept?.id === concept.id;
+                    const isHovered = hoveredConcept === concept.label;
+                    const isRelated = selectedConcept ? getRelatedConnections(selectedConcept.label).some(c => c.from === concept.label || c.to === concept.label) : false;
+                    const color = getConceptColor(concept);
+                    const active = isSelected || isHovered;
+                    const dimmed = selectedConcept && !isSelected && !isRelated;
+                    
+                    // Split long labels into two lines
+                    const words = concept.label.split(/[\s-]+/);
+                    let line1 = concept.label;
+                    let line2 = '';
+                    
+                    if (concept.label.length > 10 && words.length >= 2) {
+                      const mid = Math.ceil(words.length / 2);
+                      line1 = words.slice(0, mid).join(' ');
+                      line2 = words.slice(mid).join(' ');
+                    }
+                    
+                    const fontSize = concept.size > 70 ? 10 : 9;
                   
                   return (
-                    <g key={`conn-${i}`}>
-                      <path
-                        d={`M ${from.x}% ${from.y}% Q ${ctrlX}% ${ctrlY}% ${to.x}% ${to.y}%`}
-                        fill="none"
-                        stroke={lineColor}
-                        strokeWidth={isHighlighted ? 3 : 1.5}
-                        strokeOpacity={isHighlighted ? 0.9 : 0.4}
-                        strokeLinecap="round"
-                        strokeDasharray={fromGroup !== toGroup ? "5 3" : "none"}
-                        filter={isHighlighted ? "url(#line-glow)" : "none"}
-                        className="transition-all duration-300"
-                      />
-                      {isHighlighted && (
-                        <circle
-                          cx={`${ctrlX}%`}
-                          cy={`${ctrlY}%`}
-                          r="4"
-                          fill={lineColor}
-                          className="animate-pulse"
-                        />
+                      <g key={concept.id} className="cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); setSelectedConcept(isSelected ? null : concept); }}
+                        onMouseEnter={() => setHoveredConcept(concept.label)}
+                        onMouseLeave={() => setHoveredConcept(null)}
+                        style={{ opacity: dimmed ? 0.3 : 1, transition: 'opacity 0.2s' }}>
+                        
+                        {(active || isRelated) && (
+                          <circle cx={concept.x} cy={concept.y} r={concept.size / 2 + 4} fill="none" stroke={color.line} strokeWidth={3} strokeOpacity={0.6} />
+                        )}
+                        
+                        <circle cx={concept.x} cy={concept.y} r={concept.size / 2} fill={color.bgSolid} stroke={color.border} strokeWidth={2}
+                          style={{ filter: active ? 'drop-shadow(0 3px 8px rgba(0,0,0,0.15))' : 'none' }} />
+                        
+                        {line2 ? (
+                          <>
+                            <text x={concept.x} y={concept.y - 5} textAnchor="middle" dominantBaseline="middle" fill={color.text} fontSize={fontSize} fontWeight="600" className="pointer-events-none">
+                              {line1}
+                            </text>
+                            <text x={concept.x} y={concept.y + 7} textAnchor="middle" dominantBaseline="middle" fill={color.text} fontSize={fontSize} fontWeight="600" className="pointer-events-none">
+                              {line2}
+                            </text>
+                          </>
+                        ) : (
+                          <text x={concept.x} y={concept.y} textAnchor="middle" dominantBaseline="middle" fill={color.text} fontSize={fontSize} fontWeight="600" className="pointer-events-none">
+                            {line1}
+                          </text>
                       )}
                     </g>
                   );
                 })}
-              </svg>
 
-              {/* Concept Bubbles - smaller circles inside groups */}
-              {concepts.map((concept) => {
-                const isSelected = selectedConcept?.id === concept.id;
-                const hasConnection = selectedConcept 
-                  ? getRelatedConnections(selectedConcept.label).some(
-                      c => c.from === concept.label || c.to === concept.label
-                    )
-                  : false;
-                const color = getConceptColor(concept);
-                
+                  {/* Group labels - positioned outside */}
+                  {groupsWithBounds.map((group) => {
+                    if (!group.cx || !group.cy || !group.r) return null;
                 return (
-                  <div
-                    key={concept.id}
-                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ease-out
-                      ${isSelected ? 'z-30 scale-110' : hasConnection ? 'z-20 scale-105' : 'z-10 hover:scale-110 hover:z-20'}
-                    `}
-                    style={{
-                      left: `${concept.x}%`,
-                      top: `${concept.y}%`,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedConcept(isSelected ? null : concept);
-                      setSelectedGroup(null);
-                    }}
-                  >
-                    {/* Concept bubble */}
-                    <div
-                      className={`rounded-full flex items-center justify-center cursor-pointer transition-all duration-300
-                        ${isSelected ? 'ring-4 ring-white shadow-xl' : 'shadow-md hover:shadow-lg'}
-                        ${hasConnection ? 'ring-2 ring-white/80' : ''}
-                      `}
-                      style={{
-                        width: concept.size,
-                        height: concept.size,
-                        background: color.bgSolid,
-                        border: `2px solid ${color.border}`,
-                      }}
-                    >
-                      <div className="text-center px-2">
-                        <span 
-                          className="font-medium leading-tight block"
-                          style={{ 
-                            color: color.textDark,
-                            fontSize: concept.size > 50 ? '11px' : '9px',
-                          }}
-                        >
-                          {concept.label}
-                        </span>
+                      <g key={`label-${group.id}`} transform={`translate(${group.cx}, ${group.cy - group.r - 12})`}>
+                        <rect x={-40} y={-11} width={80} height={22} rx={11} fill="white" stroke={group.color.border} strokeWidth={2} />
+                        <text x={0} y={1} textAnchor="middle" dominantBaseline="middle" fill={group.color.text} fontSize="10" fontWeight="700">
+                          {group.name.toUpperCase()}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
                       </div>
                     </div>
                     
-                    {/* Pulse effect for selected */}
-                    {isSelected && (
-                      <div 
-                        className="absolute inset-0 rounded-full animate-ping opacity-30"
-                        style={{ 
-                          width: concept.size, 
-                          height: concept.size,
-                          border: `2px solid ${color.border}`,
-                        }}
-                      />
-                    )}
+            {/* Legend */}
+            <div className="absolute bottom-4 left-4 z-20">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Clusters</p>
+                <div className="space-y-2">
+                  {groups.map((g) => (
+                    <div key={g.id} className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color.bgSolid, border: `2px solid ${g.color.border}` }} />
+                      <span className="text-sm text-gray-700">{g.name}</span>
+                      <span className="text-xs text-gray-400 ml-auto">{g.concepts.length}</span>
+                    </div>
+                  ))}
+                </div>
                   </div>
-                );
-              })}
             </div>
 
-            {/* Selected Concept Detail Panel */}
+            {/* Detail Panel */}
             {selectedConcept && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4 animate-fade-up">
-                <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                  {/* Header */}
-                  <div 
-                    className="p-5 border-b"
-                    style={{ 
-                      backgroundColor: getConceptColor(selectedConcept).bgSolid,
-                      borderColor: getConceptColor(selectedConcept).border,
-                    }}
-                  >
+              <div className="absolute bottom-4 right-4 z-40 w-80">
+                <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b-2" style={{ backgroundColor: getConceptColor(selectedConcept).bgSolid, borderColor: getConceptColor(selectedConcept).border }}>
                     <div className="flex items-start justify-between">
                       <div>
-                        <p 
-                          className="text-xs font-semibold uppercase tracking-wider mb-1"
-                          style={{ color: getConceptColor(selectedConcept).text }}
-                        >
-                          {groups[selectedConcept.groupId]?.name || 'Concept'}
+                        <p className="text-xs font-semibold uppercase mb-1" style={{ color: getConceptColor(selectedConcept).text }}>
+                          {groups[selectedConcept.groupId]?.name}
                         </p>
-                        <h3 
-                          className="text-xl font-semibold"
-                          style={{ color: getConceptColor(selectedConcept).textDark }}
-                        >
-                          {selectedConcept.label}
-                        </h3>
+                        <h3 className="text-lg font-bold text-gray-800">{selectedConcept.label}</h3>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="rounded-full -mt-1 -mr-1 hover:bg-white/50"
-                        onClick={() => setSelectedConcept(null)}
-                      >
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setSelectedConcept(null)}>
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
-                  
-                  {/* Content */}
-                  <div className="p-5 space-y-4 max-h-[280px] overflow-y-auto">
-                    {/* Connections */}
+                  <div className="p-4 space-y-4 max-h-[280px] overflow-y-auto">
                     {getRelatedConnections(selectedConcept.label).length > 0 && (
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <Link2 className="w-4 h-4 text-violet-500" />
-                          <h4 className="text-sm font-medium text-gray-700">
-                            Connected to ({getRelatedConnections(selectedConcept.label).length})
-                          </h4>
+                          <Link2 className="w-4 h-4 text-indigo-500" />
+                          <span className="text-sm font-semibold text-gray-700">Connections</span>
                         </div>
                         <div className="space-y-2">
-                          {getRelatedConnections(selectedConcept.label).slice(0, 4).map((conn, i) => {
-                            const otherConcept = conn.from === selectedConcept.label ? conn.to : conn.from;
-                            const otherGroupId = getGroupForConcept(otherConcept);
-                            const otherColor = groupColors[otherGroupId % groupColors.length];
+                          {getRelatedConnections(selectedConcept.label).slice(0, 3).map((conn, i) => {
+                            const other = conn.from === selectedConcept.label ? conn.to : conn.from;
+                            const otherC = getConceptByLabel(other);
+                            const otherCol = otherC ? groupColors[otherC.groupId % groupColors.length] : groupColors[0];
                             return (
-                              <div 
-                                key={i}
-                                className="p-3 rounded-xl transition-colors cursor-pointer"
-                                style={{ backgroundColor: `${otherColor.bg}` }}
-                                onMouseEnter={() => setHoveredConnection(conn)}
-                                onMouseLeave={() => setHoveredConnection(null)}
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <ArrowRight className="w-3 h-3" style={{ color: otherColor.text }} />
-                                  <span 
-                                    className="text-sm font-medium"
-                                    style={{ color: otherColor.textDark }}
-                                  >
-                                    {otherConcept}
-                                  </span>
+                              <div key={i} className="p-2 rounded-lg" style={{ backgroundColor: otherCol.bg }}>
+                                <div className="flex items-center gap-2">
+                                  <ArrowRight className="w-3 h-3" style={{ color: otherCol.text }} />
+                                  <span className="text-sm font-medium" style={{ color: otherCol.text }}>{other}</span>
                                 </div>
-                                <p className="text-xs text-gray-500 pl-5">{conn.explanation}</p>
+                                <p className="text-xs text-gray-500 mt-1 pl-5">{conn.explanation}</p>
                               </div>
                             );
                           })}
                         </div>
                       </div>
                     )}
-
-                    {/* Related Notes */}
                     {getRelatedNotes(selectedConcept.label).length > 0 && (
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <BookOpen className="w-4 h-4 text-emerald-500" />
-                          <h4 className="text-sm font-medium text-gray-700">
-                            From Notes
-                          </h4>
+                          <span className="text-sm font-semibold text-gray-700">Notes</span>
                         </div>
-                        <div className="space-y-2">
                           {getRelatedNotes(selectedConcept.label).slice(0, 2).map((note, i) => (
                             <Link key={i} to="/notes">
-                              <div className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                                <p className="text-sm font-medium text-gray-700 mb-1">{note.title}</p>
-                                <p className="text-xs text-gray-500 line-clamp-1">{note.excerpt}</p>
+                            <div className="p-2 bg-gray-50 rounded-lg hover:bg-gray-100 mb-2">
+                              <p className="text-sm font-medium text-gray-700">{note.title}</p>
+                              <p className="text-xs text-gray-500">{note.excerpt}</p>
                               </div>
                             </Link>
                           ))}
-                        </div>
                       </div>
                     )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2">
                       <Link to="/review" className="flex-1">
-                        <Button variant="outline" className="w-full rounded-xl text-sm" size="sm">
-                          <RefreshCw className="w-3 h-3 mr-2" />
-                          Review
+                        <Button variant="outline" size="sm" className="w-full text-xs">
+                          <RefreshCw className="w-3 h-3 mr-1" />Review
                         </Button>
                       </Link>
                       <Link to="/notes" className="flex-1">
-                        <Button 
-                          className="w-full rounded-xl text-sm text-white" 
-                          size="sm"
-                          style={{ backgroundColor: getConceptColor(selectedConcept).line }}
-                        >
-                          <PenLine className="w-3 h-3 mr-2" />
-                          Add Note
+                        <Button size="sm" className="w-full text-xs text-white" style={{ backgroundColor: getConceptColor(selectedConcept).line }}>
+                          <PenLine className="w-3 h-3 mr-1" />Add Note
                         </Button>
                       </Link>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Legend */}
-            {!selectedConcept && groups.length > 0 && (
-              <div className="absolute bottom-6 left-6 z-20">
-                <div className="bg-white/90 backdrop-blur rounded-xl shadow-sm p-4 max-w-[200px]">
-                  <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Topics</h4>
-                  <div className="space-y-2">
-                    {groups.slice(0, 6).map((group) => (
-                      <button
-                        key={group.id}
-                        onClick={() => setSelectedGroup(selectedGroup?.id === group.id ? null : group)}
-                        className={`w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left
-                          ${selectedGroup?.id === group.id ? 'bg-gray-100' : 'hover:bg-gray-50'}
-                        `}
-                      >
-                        <div 
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: group.color.border }}
-                        />
-                        <span className="text-xs text-gray-600 truncate">
-                          {group.name}
-                        </span>
-                        <span className="text-[10px] text-gray-400 ml-auto">
-                          {group.concepts.length}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Help text */}
-            {!selectedConcept && (
-              <div className="absolute bottom-6 right-6 z-20">
-                <p className="text-xs text-gray-400 bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm">
-                  Click concepts to explore • Scroll to zoom
-                </p>
               </div>
             )}
           </>
