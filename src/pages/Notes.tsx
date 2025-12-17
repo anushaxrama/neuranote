@@ -20,16 +20,26 @@ interface Note {
 
 // LocalStorage helpers
 const getStoredNotes = (): Note[] => {
-  const stored = localStorage.getItem("neuranoteNotes");
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem("neuranoteNotes");
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error("Error loading notes:", e);
+    return [];
+  }
 };
 
-const saveNotes = (notes: Note[]) => {
-  localStorage.setItem("neuranoteNotes", JSON.stringify(notes));
-  // Also save all concepts for other pages
-  const allConcepts = notes.flatMap(n => n.concepts);
-  const uniqueConcepts = [...new Set(allConcepts)];
-  localStorage.setItem("neuranoteConcepts", JSON.stringify(uniqueConcepts));
+const saveNotesToStorage = (notes: Note[]) => {
+  try {
+    localStorage.setItem("neuranoteNotes", JSON.stringify(notes));
+    // Also save all concepts for other pages
+    const allConcepts = notes.flatMap(n => n.concepts);
+    const uniqueConcepts = [...new Set(allConcepts)];
+    localStorage.setItem("neuranoteConcepts", JSON.stringify(uniqueConcepts));
+    console.log("Saved notes to localStorage:", notes.length, "notes,", uniqueConcepts.length, "concepts");
+  } catch (e) {
+    console.error("Error saving notes:", e);
+  }
 };
 
 const Notes = () => {
@@ -47,6 +57,7 @@ const Notes = () => {
   const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Load notes from localStorage on mount
   useEffect(() => {
@@ -98,27 +109,43 @@ const Notes = () => {
   };
 
   const handleSaveNote = async () => {
-    if (!newNoteTitle.trim() || !newNoteContent.trim()) return;
+    console.log("Save button clicked!");
+    console.log("Title:", newNoteTitle);
+    console.log("Content length:", newNoteContent.length);
+    
+    if (!newNoteTitle.trim() || !newNoteContent.trim()) {
+      console.log("Title or content is empty, not saving");
+      setSaveError("Please add a title and content");
+      return;
+    }
 
+    setSaveError(null);
     setIsSaving(true);
 
-    // Auto-extract concepts if none have been extracted yet
-    let conceptsToSave = extractedConcepts;
+    // Try to extract concepts, but don't block save if it fails
+    let conceptsToSave = [...extractedConcepts];
+    
     if (conceptsToSave.length === 0) {
+      console.log("No concepts yet, trying to extract...");
       try {
         const extracted = await extractConcepts(newNoteContent);
-        conceptsToSave = extracted;
-        setExtractedConcepts(extracted);
+        if (extracted && extracted.length > 0) {
+          conceptsToSave = extracted;
+          setExtractedConcepts(extracted);
+          console.log("Extracted concepts:", extracted);
+        }
       } catch (error) {
-        console.error("Error auto-extracting concepts:", error);
-        // Continue with empty concepts if extraction fails
+        console.error("Error auto-extracting concepts (continuing anyway):", error);
+        // Continue without concepts - still save the note
       }
     }
 
+    console.log("Creating note with concepts:", conceptsToSave);
+
     const newNote: Note = {
       id: Date.now().toString(),
-      title: newNoteTitle,
-      content: newNoteContent,
+      title: newNoteTitle.trim(),
+      content: newNoteContent.trim(),
       concepts: conceptsToSave,
       summary: summary || undefined,
       updated: "Just now",
@@ -127,12 +154,14 @@ const Notes = () => {
 
     const updatedNotes = [newNote, ...notes];
     setNotes(updatedNotes);
-    saveNotes(updatedNotes);
+    saveNotesToStorage(updatedNotes);
+    
+    console.log("Note saved successfully!");
     
     setIsSaving(false);
     setShowSaveSuccess(true);
 
-    // Hide success message after 3 seconds
+    // Hide success message and reset form after delay
     setTimeout(() => {
       setShowSaveSuccess(false);
       setIsCreating(false);
@@ -140,13 +169,14 @@ const Notes = () => {
       setNewNoteContent("");
       setExtractedConcepts([]);
       setSummary("");
-    }, 2000);
+      setAiPrompt("");
+    }, 2500);
   };
 
   const handleDeleteNote = (noteId: string) => {
     const updatedNotes = notes.filter(n => n.id !== noteId);
     setNotes(updatedNotes);
-    saveNotes(updatedNotes);
+    saveNotesToStorage(updatedNotes);
     setSelectedNote(null);
   };
 
@@ -159,6 +189,7 @@ const Notes = () => {
     setSummary("");
     setAiPrompt("");
     setShowSaveSuccess(false);
+    setSaveError(null);
   };
 
   const formatTimeAgo = (timestamp: number) => {
@@ -305,7 +336,10 @@ const Notes = () => {
                     <div>
                       <p className="font-medium">Note Saved!</p>
                       <p className="text-sm opacity-90">
-                        {extractedConcepts.length} concepts added to your map
+                        {extractedConcepts.length > 0 
+                          ? `${extractedConcepts.length} concepts added to your map`
+                          : "Your note has been saved"
+                        }
                       </p>
                     </div>
                     <Button 
@@ -341,6 +375,13 @@ const Notes = () => {
                 </div>
               </div>
 
+              {/* Error Message */}
+              {saveError && (
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+                  <p className="text-sm text-destructive">{saveError}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Editor */}
                 <div className="lg:col-span-2 space-y-4">
@@ -348,7 +389,12 @@ const Notes = () => {
                     type="text"
                     placeholder="Note title..."
                     value={selectedNote?.title || newNoteTitle}
-                    onChange={(e) => isCreating ? setNewNoteTitle(e.target.value) : null}
+                    onChange={(e) => {
+                      if (isCreating) {
+                        setNewNoteTitle(e.target.value);
+                        setSaveError(null);
+                      }
+                    }}
                     className="w-full px-4 py-3 bg-card rounded-2xl border border-border/50 text-foreground text-lg font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                     readOnly={!!selectedNote}
                   />
@@ -360,7 +406,12 @@ Try writing about:
 • Something interesting you learned
 • Notes from a book, video, or lecture"
                     value={selectedNote?.content || newNoteContent}
-                    onChange={(e) => isCreating ? setNewNoteContent(e.target.value) : null}
+                    onChange={(e) => {
+                      if (isCreating) {
+                        setNewNoteContent(e.target.value);
+                        setSaveError(null);
+                      }
+                    }}
                     className="w-full h-64 px-4 py-3 bg-card rounded-2xl border border-border/50 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                     readOnly={!!selectedNote}
                   />
@@ -396,7 +447,7 @@ Try writing about:
                       <Button 
                         variant="hero" 
                         onClick={handleSaveNote}
-                        disabled={!newNoteTitle.trim() || !newNoteContent.trim() || isSaving}
+                        disabled={isSaving}
                         className="ml-auto"
                       >
                         {isSaving ? (
@@ -419,7 +470,7 @@ Try writing about:
                     <div className="p-3 bg-accent/30 rounded-xl">
                       <p className="text-sm text-muted-foreground">
                         <Lightbulb className="w-4 h-4 inline mr-1 text-primary" />
-                        Tip: Click "Extract Concepts" to see key ideas, or just save and we'll extract them automatically!
+                        Tip: Click "Extract Concepts" to see key ideas, or just save and we'll try to extract them automatically!
                       </p>
                     </div>
                   )}
