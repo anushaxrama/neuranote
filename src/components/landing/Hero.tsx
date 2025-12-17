@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FloatingBubbles } from "@/components/FloatingBubbles";
 import { ArrowRight, Sparkles } from "lucide-react";
@@ -57,13 +58,17 @@ export const Hero = () => {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up"
           style={{ animationDelay: "0.4s" }}
         >
-          <Button variant="hero" size="xl">
-            Open NeuraNote
-            <ArrowRight className="w-5 h-5 ml-1" />
-          </Button>
-          <Button variant="ghost" size="lg" className="text-muted-foreground hover:text-foreground">
-            See how it works
-          </Button>
+          <Link to="/dashboard">
+            <Button variant="hero" size="xl">
+              Open NeuraNote
+              <ArrowRight className="w-5 h-5 ml-1" />
+            </Button>
+          </Link>
+          <a href="#how-it-works">
+            <Button variant="ghost" size="lg" className="text-muted-foreground hover:text-foreground">
+              See how it works
+            </Button>
+          </a>
         </div>
 
         {/* Trust indicator */}
