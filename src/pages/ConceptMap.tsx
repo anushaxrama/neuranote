@@ -431,7 +431,7 @@ const ConceptMap = () => {
                 <div>
                   <h1 className="text-lg font-semibold" style={{ color: expandedGroup ? currentColor.text : '#1f2937' }}>
                     {expandedGroup ? expandedGroup.name : 'Concept Map'}
-                  </h1>
+              </h1>
                   <p className="text-sm" style={{ color: expandedGroup ? currentColor.text : '#6b7280', opacity: 0.8 }}>
                     {expandedGroup 
                       ? `${expandedGroup.concepts.length} concepts · ${currentConnections.length} connections`
@@ -455,8 +455,8 @@ const ConceptMap = () => {
                 </div>
                 <Button variant="ghost" size="sm" className="h-8 px-2" onClick={resetView}><Maximize2 className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={loadAllConnections} disabled={isLoadingConnections}>
-                  <RefreshCw className={`w-4 h-4 ${isLoadingConnections ? 'animate-spin' : ''}`} />
-                </Button>
+                <RefreshCw className={`w-4 h-4 ${isLoadingConnections ? 'animate-spin' : ''}`} />
+              </Button>
               </div>
             </div>
 
@@ -526,19 +526,6 @@ const ConceptMap = () => {
                     </g>
                   ))}
 
-                  {/* Expanded: Title in center top */}
-                  {expandedGroup && (
-                    <g transform={`translate(${canvasSize.width / 2}, 60)`}>
-                      <rect x={-200} y={-35} width={400} height={70} rx={35} fill="white" fillOpacity={0.95} />
-                      <rect x={-198} y={-33} width={396} height={66} rx={33} fill={currentColor.bgSolid} />
-                      <text x={0} y={-5} textAnchor="middle" dominantBaseline="middle" fill={currentColor.text} fontSize="28" fontWeight="800">
-                        {expandedGroup.name}
-                      </text>
-                      <text x={0} y={22} textAnchor="middle" fill={currentColor.text} fontSize="14" fontWeight="600" opacity={0.8}>
-                        {expandedGroup.concepts.length} concepts · {currentConnections.length} connections
-                      </text>
-                    </g>
-                  )}
 
                   {/* Connections */}
                   {currentConnections.map((conn, i) => {
@@ -548,8 +535,8 @@ const ConceptMap = () => {
                     
                     const hl = isHighlighted(conn);
                     const col = expandedGroup ? currentColor : getColor(f.groupId);
-                    
-                    return (
+                  
+                  return (
                       <g key={i}>
                         {/* Glow effect for better visibility */}
                         {expandedGroup && (
@@ -557,7 +544,7 @@ const ConceptMap = () => {
                             stroke={col.border}
                             strokeWidth={hl ? 8 : 6}
                             strokeOpacity={0.15}
-                            strokeLinecap="round"
+                        strokeLinecap="round"
                           />
                         )}
                         <line x1={f.x} y1={f.y} x2={t.x} y2={t.y}
@@ -607,13 +594,39 @@ const ConceptMap = () => {
                           </>
                         ) : (
                           <text x={c.x} y={c.y} textAnchor="middle" dominantBaseline="middle" fill={col.text} fontSize={fs} fontWeight="600" className="pointer-events-none">{l1}</text>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
               </div>
             </div>
+
+            {/* Expanded view title card */}
+            {expandedGroup && (
+              <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
+                <div 
+                  className="px-8 py-4 rounded-2xl shadow-xl border-2 text-center"
+                    style={{
+                    backgroundColor: 'white',
+                    borderColor: currentColor.border,
+                  }}
+                >
+                  <h2 
+                    className="text-3xl font-bold mb-1"
+                    style={{ color: currentColor.text }}
+                  >
+                    {expandedGroup.name}
+                  </h2>
+                  <p 
+                    className="text-sm font-medium"
+                    style={{ color: currentColor.border }}
+                  >
+                    {expandedGroup.concepts.length} concepts · {currentConnections.length} connections
+                  </p>
+                      </div>
+                    </div>
+            )}
 
             {/* Controls */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
@@ -626,8 +639,8 @@ const ConceptMap = () => {
                     <span className="text-gray-300">|</span>
                     <span className="text-blue-600 font-medium">Click a note circle to expand</span>
                   </>
-                )}
-              </div>
+                    )}
+                  </div>
             </div>
 
             {/* Legend - only in overview */}
@@ -691,20 +704,20 @@ const ConceptMap = () => {
                         </div>
                       </div>
                     )}
-                    
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <BookOpen className="w-4 h-4 text-emerald-500" />
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <BookOpen className="w-4 h-4 text-emerald-500" />
                         <span className="text-sm font-semibold text-gray-700">Source</span>
                       </div>
                       <Link to="/notes">
                         <div className="p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                           <p className="text-sm font-medium text-gray-700">{groups.find(g => g.noteId === selectedConcept.noteId)?.name}</p>
                           <p className="text-xs text-gray-500">View note →</p>
-                        </div>
-                      </Link>
-                    </div>
-                    
+                              </div>
+                            </Link>
+                      </div>
+
                     <div className="flex gap-2">
                       <Link to="/review" className="flex-1">
                         <Button variant="outline" size="sm" className="w-full text-xs"><RefreshCw className="w-3 h-3 mr-1" />Review</Button>
