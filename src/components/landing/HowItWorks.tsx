@@ -26,7 +26,7 @@ const features = [
 
 export const HowItWorks = () => {
   return (
-    <section className="py-24 px-6 bg-background relative">
+    <section id="how-it-works" className="py-24 px-6 bg-background relative">
       {/* Subtle top gradient */}
       <div 
         className="absolute top-0 left-0 right-0 h-px"

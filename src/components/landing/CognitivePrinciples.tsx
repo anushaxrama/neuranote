@@ -44,7 +44,7 @@ export const CognitivePrinciples = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
-    <section className="py-24 px-6 bg-gradient-mist relative">
+    <section id="principles" className="py-24 px-6 bg-gradient-mist relative">
       <div className="max-w-5xl mx-auto">
         {/* Section header */}
         <div className="text-center mb-16">

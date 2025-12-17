@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
@@ -24,10 +25,12 @@ export const CallToAction = () => {
         </p>
 
         {/* CTA */}
-        <Button variant="hero" size="xl" className="group">
-          Begin your journey
-          <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-        </Button>
+        <Link to="/dashboard">
+          <Button variant="hero" size="xl" className="group">
+            Begin your journey
+            <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+          </Button>
+        </Link>
 
         {/* Reassurance */}
         <p className="mt-8 text-sm text-muted-foreground/60">
