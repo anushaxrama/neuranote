@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Home, FileText, Network, RefreshCw, BarChart3, Settings, 
   ArrowLeft, Eye, EyeOff, Sparkles, Loader2, MessageCircle, 
-  ChevronRight, CheckCircle2, Lightbulb, Send
+  ChevronRight, CheckCircle2, Lightbulb, Send, BookOpen
 } from "lucide-react";
 import { generateReviewQuestions, provideFeedback } from "@/lib/openai";
 
@@ -29,57 +29,47 @@ interface FeedbackResult {
   suggestions: string[];
 }
 
-const sampleConcepts = [
-  "Spaced Repetition",
-  "Active Recall", 
-  "Cognitive Load",
-  "Metacognition",
-  "Memory Encoding",
-  "Interleaving",
-];
+// Get concepts from localStorage
+const getStoredConcepts = (): string[] => {
+  const stored = localStorage.getItem("neuranoteConcepts");
+  return stored ? JSON.parse(stored) : [];
+};
 
 const Review = () => {
+  const [concepts, setConcepts] = useState<string[]>([]);
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [confidence, setConfidence] = useState(50);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [userAnswer, setUserAnswer] = useState("");
   const [feedbackResult, setFeedbackResult] = useState<FeedbackResult | null>(null);
   const [isGettingFeedback, setIsGettingFeedback] = useState(false);
   const [completedQuestions, setCompletedQuestions] = useState<number[]>([]);
   const [sessionComplete, setSessionComplete] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
-    loadQuestions();
+    setConcepts(getStoredConcepts());
   }, []);
 
-  const loadQuestions = async () => {
+  const startSession = async () => {
+    if (concepts.length === 0) return;
+    
+    setHasStarted(true);
     setIsLoading(true);
     try {
-      const generatedQuestions = await generateReviewQuestions(sampleConcepts);
+      const generatedQuestions = await generateReviewQuestions(concepts);
       setQuestions(generatedQuestions);
     } catch (error) {
       console.error("Error loading questions:", error);
-      // Fallback questions if AI fails
-      setQuestions([
-        {
-          question: "How does spacing out your review sessions help with long-term retention?",
-          concept: "Spaced Repetition",
-          hint: "Think about how your brain strengthens memories over time...",
-        },
-        {
-          question: "Why is testing yourself more effective than re-reading material?",
-          concept: "Active Recall",
-          hint: "Consider what happens in your brain when you try to retrieve information...",
-        },
-        {
-          question: "How can you reduce cognitive load when learning something new?",
-          concept: "Cognitive Load",
-          hint: "Think about breaking down information and managing working memory...",
-        },
-      ]);
+      // Fallback to simple questions based on concepts
+      setQuestions(concepts.slice(0, 3).map(concept => ({
+        question: `How would you explain "${concept}" in your own words?`,
+        concept,
+        hint: `Think about the key aspects of ${concept} and how it connects to other ideas...`,
+      })));
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +123,8 @@ const Review = () => {
     setConfidence(50);
     setUserAnswer("");
     setFeedbackResult(null);
-    loadQuestions();
+    setHasStarted(false);
+    setQuestions([]);
   };
 
   const currentQuestion = questions[currentIndex];
@@ -191,7 +182,70 @@ const Review = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-8">
-        {isLoading ? (
+        {/* Empty State - No Concepts */}
+        {concepts.length === 0 ? (
+          <div className="max-w-lg text-center">
+            <div className="w-20 h-20 rounded-full bg-blush/20 flex items-center justify-center mx-auto mb-6">
+              <RefreshCw className="w-10 h-10 text-blush" />
+            </div>
+            <h2 className="text-2xl font-semibold text-foreground mb-3">No concepts to review yet</h2>
+            <p className="text-muted-foreground mb-6">
+              Create some notes first! Once you have notes with concepts, you can practice 
+              recalling them here with AI-generated questions.
+            </p>
+            <Link to="/notes">
+              <Button variant="hero">
+                <FileText className="w-4 h-4 mr-2" />
+                Create Notes First
+              </Button>
+            </Link>
+
+            <div className="mt-8 p-4 bg-accent/30 rounded-2xl">
+              <p className="text-sm text-muted-foreground">
+                <Lightbulb className="w-4 h-4 inline mr-1" />
+                Tip: Active recall (testing yourself) is one of the most effective ways to learn!
+              </p>
+            </div>
+          </div>
+        ) : !hasStarted ? (
+          /* Start Session Screen */
+          <div className="max-w-lg text-center">
+            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-2xl font-semibold text-foreground mb-3">Ready to Review?</h2>
+            <p className="text-muted-foreground mb-6">
+              You have <span className="text-foreground font-medium">{concepts.length} concepts</span> to 
+              practice. AI will generate personalized questions to help you recall and understand them better.
+            </p>
+            
+            {/* Concept Preview */}
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+              {concepts.slice(0, 6).map((concept) => (
+                <span key={concept} className="px-3 py-1 text-sm bg-primary/10 text-primary rounded-full">
+                  {concept}
+                </span>
+              ))}
+              {concepts.length > 6 && (
+                <span className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-full">
+                  +{concepts.length - 6} more
+                </span>
+              )}
+            </div>
+
+            <Button variant="hero" size="lg" onClick={startSession}>
+              <Sparkles className="w-5 h-5 mr-2" />
+              Start Review Session
+            </Button>
+
+            <div className="mt-8 p-4 bg-accent/30 rounded-2xl">
+              <p className="text-sm text-muted-foreground">
+                <BookOpen className="w-4 h-4 inline mr-1" />
+                Sessions typically take 5-10 minutes
+              </p>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
             <p className="text-muted-foreground">Generating personalized review questions...</p>
@@ -353,16 +407,10 @@ const Review = () => {
               {/* Reference Answer */}
               {showAnswer && (
                 <div className="mt-4 p-4 bg-muted/30 rounded-2xl animate-fade-up">
-                  <p className="text-sm text-muted-foreground mb-2">Reference explanation:</p>
+                  <p className="text-sm text-muted-foreground mb-2">Think about:</p>
                   <p className="text-foreground leading-relaxed">
-                    {currentQuestion?.concept === "Spaced Repetition" &&
-                      "Spacing forces your brain to work harder to retrieve information each time, which strengthens the neural pathways. This is more effective than cramming because it builds stronger, more durable memories."}
-                    {currentQuestion?.concept === "Active Recall" &&
-                      "Testing yourself activates deeper cognitive processes than passive review. When you struggle to retrieve information, your brain forms stronger memory traces, making future recall easier."}
-                    {currentQuestion?.concept === "Cognitive Load" &&
-                      "Breaking information into smaller chunks, using visual aids, and building on prior knowledge all help reduce cognitive load, freeing up mental resources for deeper learning."}
-                    {!["Spaced Repetition", "Active Recall", "Cognitive Load"].includes(currentQuestion?.concept || "") &&
-                      "This concept involves important principles that connect to other areas of learning. Take time to reflect on how it relates to your own experience."}
+                    This concept involves important principles that connect to other areas of learning. 
+                    Consider how {currentQuestion?.concept} relates to your own experience and other things you know.
                   </p>
                 </div>
               )}
