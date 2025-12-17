@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   ChevronRight, X, Sparkles, FileText, 
-  Network, RefreshCw, BarChart3, Rocket, MousePointer2
+  Network, RefreshCw, BarChart3, Rocket, ArrowRight
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -11,88 +11,85 @@ interface TutorialStep {
   title: string;
   description: string;
   icon: React.ReactNode;
-  targetSelector?: string;
   targetPage?: string;
-  position: "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "left" | "right";
+  position: "center" | "bottom-right" | "bottom-left";
+  highlightSelector?: string;
   action?: string;
-  highlightArea?: { top: string; left: string; width: string; height: string };
 }
 
 const tutorialSteps: TutorialStep[] = [
   {
     id: 1,
     title: "Welcome to NeuraNote! 🎉",
-    description: "Let me walk you through the app. I'll show you exactly where to click!",
-    icon: <Sparkles className="w-6 h-6 text-primary" />,
+    description: "I'll walk you through the app. Watch for the highlighted areas!",
+    icon: <Sparkles className="w-5 h-5 text-primary" />,
     position: "center",
+    targetPage: "/dashboard",
   },
   {
     id: 2,
-    title: "This is your Sidebar",
-    description: "Navigate between different sections of the app from here. Let's start with Notes!",
-    icon: <MousePointer2 className="w-6 h-6 text-primary" />,
-    position: "left",
-    highlightArea: { top: "120px", left: "0", width: "256px", height: "280px" },
-    action: "Look at the sidebar on the left",
+    title: "Your Navigation",
+    description: "Use the sidebar to move between sections. Each icon takes you to a different feature.",
+    icon: <ArrowRight className="w-5 h-5 text-primary" />,
+    position: "bottom-right",
+    targetPage: "/dashboard",
+    highlightSelector: "sidebar",
+    action: "← Look at the sidebar",
   },
   {
     id: 3,
-    title: "Click on Notes",
-    description: "This is where you'll capture your thoughts and ideas. AI will help extract key concepts!",
-    icon: <FileText className="w-6 h-6 text-lavender" />,
-    targetPage: "/notes",
-    position: "left",
-    highlightArea: { top: "168px", left: "16px", width: "224px", height: "48px" },
-    action: "Click 'Notes' in the sidebar",
+    title: "Notes - Start Here",
+    description: "Click 'Notes' in the sidebar to capture your thoughts. This is where learning begins!",
+    icon: <FileText className="w-5 h-5 text-lavender" />,
+    position: "bottom-right",
+    targetPage: "/dashboard",
+    highlightSelector: "notes-link",
+    action: "← Click 'Notes' to continue",
   },
   {
     id: 4,
-    title: "Create a New Note",
-    description: "Click this button to start writing. Try writing about something you're learning!",
-    icon: <FileText className="w-6 h-6 text-lavender" />,
+    title: "Create Your First Note",
+    description: "Click the 'New Note' button to start writing. AI will help extract key concepts!",
+    icon: <FileText className="w-5 h-5 text-lavender" />,
+    position: "bottom-left",
     targetPage: "/notes",
-    position: "top-right",
-    highlightArea: { top: "32px", left: "calc(100% - 180px)", width: "150px", height: "50px" },
-    action: "Click 'New Note' button",
+    highlightSelector: "new-note-btn",
+    action: "↑ Click 'New Note'",
   },
   {
     id: 5,
     title: "Concept Map",
-    description: "Once you have notes with concepts, they'll appear here as connected bubbles!",
-    icon: <Network className="w-6 h-6 text-sage" />,
+    description: "Your concepts appear here as connected bubbles. AI discovers relationships between ideas!",
+    icon: <Network className="w-5 h-5 text-sage" />,
+    position: "bottom-right",
     targetPage: "/concept-map",
-    position: "left",
-    highlightArea: { top: "216px", left: "16px", width: "224px", height: "48px" },
-    action: "Click 'Concept Map' to see your ideas visualized",
+    action: "Explore your knowledge visually",
   },
   {
     id: 6,
-    title: "Review Sessions",
-    description: "Practice active recall here! AI generates questions from your concepts.",
-    icon: <RefreshCw className="w-6 h-6 text-blush" />,
+    title: "Review & Practice",
+    description: "Test yourself with AI-generated questions. Active recall strengthens memory!",
+    icon: <RefreshCw className="w-5 h-5 text-blush" />,
+    position: "bottom-right",
     targetPage: "/review",
-    position: "left",
-    highlightArea: { top: "264px", left: "16px", width: "224px", height: "48px" },
-    action: "Click 'Review' to practice recall",
+    action: "Practice makes progress",
   },
   {
     id: 7,
-    title: "Track Your Progress",
+    title: "Track Progress",
     description: "See insights about your learning journey and reflect on your growth.",
-    icon: <BarChart3 className="w-6 h-6 text-primary" />,
+    icon: <BarChart3 className="w-5 h-5 text-primary" />,
+    position: "bottom-right",
     targetPage: "/insights",
-    position: "left",
-    highlightArea: { top: "312px", left: "16px", width: "224px", height: "48px" },
-    action: "Click 'Insights' for analytics",
+    action: "Monitor your progress",
   },
   {
     id: 8,
     title: "You're Ready! 🚀",
-    description: "Start by creating your first note. Write about anything you're curious about!",
-    icon: <Rocket className="w-6 h-6 text-primary" />,
-    targetPage: "/notes",
+    description: "Start by creating your first note about something you're learning!",
+    icon: <Rocket className="w-5 h-5 text-primary" />,
     position: "center",
-    action: "Let's create your first note!",
+    targetPage: "/notes",
   },
 ];
 
@@ -102,7 +99,6 @@ interface TutorialProps {
 
 export const Tutorial = ({ onComplete }: TutorialProps) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -116,6 +112,40 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
     }
   }, [currentStep, step.targetPage, location.pathname, navigate]);
 
+  // Add highlight classes to elements
+  useEffect(() => {
+    // Remove previous highlights
+    document.querySelectorAll('.tutorial-highlight').forEach(el => {
+      el.classList.remove('tutorial-highlight', 'tutorial-pulse');
+    });
+
+    // Add new highlight based on selector
+    if (step.highlightSelector) {
+      setTimeout(() => {
+        let element: Element | null = null;
+        
+        if (step.highlightSelector === "sidebar") {
+          element = document.querySelector('aside');
+        } else if (step.highlightSelector === "notes-link") {
+          element = document.querySelector('a[href="/notes"]');
+        } else if (step.highlightSelector === "new-note-btn") {
+          element = document.querySelector('button:has(.lucide-plus)') || 
+                   document.querySelector('[class*="hero"]');
+        }
+
+        if (element) {
+          element.classList.add('tutorial-highlight', 'tutorial-pulse');
+        }
+      }, 100);
+    }
+
+    return () => {
+      document.querySelectorAll('.tutorial-highlight').forEach(el => {
+        el.classList.remove('tutorial-highlight', 'tutorial-pulse');
+      });
+    };
+  }, [currentStep, step.highlightSelector, location.pathname]);
+
   const handleNext = useCallback(() => {
     if (isLastStep) {
       handleComplete();
@@ -125,22 +155,21 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
   }, [isLastStep, currentStep]);
 
   const handleComplete = () => {
-    setIsVisible(false);
     localStorage.setItem("neuranoteTutorialComplete", "true");
+    document.querySelectorAll('.tutorial-highlight').forEach(el => {
+      el.classList.remove('tutorial-highlight', 'tutorial-pulse');
+    });
     onComplete();
     navigate("/notes");
-  };
-
-  const handleSkip = () => {
-    handleComplete();
   };
 
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        handleSkip();
+        handleComplete();
       } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") {
+        e.preventDefault();
         handleNext();
       }
     };
@@ -148,76 +177,41 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleNext]);
 
-  if (!isVisible) return null;
-
   const getTooltipPosition = () => {
     switch (step.position) {
       case "center":
-        return "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
-      case "left":
-        return "top-1/2 left-[300px] -translate-y-1/2";
-      case "right":
-        return "top-1/2 right-[100px] -translate-y-1/2";
-      case "top-left":
-        return "top-[100px] left-[300px]";
-      case "top-right":
-        return "top-[100px] right-[100px]";
-      case "bottom-left":
-        return "bottom-[100px] left-[300px]";
+        return "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
       case "bottom-right":
-        return "bottom-[100px] right-[100px]";
+        return "fixed bottom-6 right-6";
+      case "bottom-left":
+        return "fixed bottom-6 left-72";
       default:
-        return "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
+        return "fixed bottom-6 right-6";
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100]">
-      {/* Dark overlay with cutout */}
-      <div className="absolute inset-0 bg-background/90 backdrop-blur-sm">
-        {/* Spotlight cutout */}
-        {step.highlightArea && (
-          <div
-            className="absolute rounded-2xl transition-all duration-500 ease-out"
-            style={{
-              top: step.highlightArea.top,
-              left: step.highlightArea.left,
-              width: step.highlightArea.width,
-              height: step.highlightArea.height,
-              boxShadow: `
-                0 0 0 9999px rgba(0, 0, 0, 0.75),
-                0 0 30px 10px hsl(var(--primary) / 0.3),
-                inset 0 0 20px 5px hsl(var(--primary) / 0.1)
-              `,
-              border: "2px solid hsl(var(--primary) / 0.5)",
-            }}
-          />
-        )}
-      </div>
+    <>
+      {/* CSS for highlights */}
+      <style>{`
+        .tutorial-highlight {
+          position: relative;
+          z-index: 50 !important;
+          box-shadow: 0 0 0 4px hsl(var(--primary) / 0.4), 0 0 20px 8px hsl(var(--primary) / 0.2) !important;
+          border-radius: 16px;
+        }
+        .tutorial-pulse {
+          animation: tutorial-pulse 2s ease-in-out infinite;
+        }
+        @keyframes tutorial-pulse {
+          0%, 100% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.4), 0 0 20px 8px hsl(var(--primary) / 0.2); }
+          50% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0.6), 0 0 30px 12px hsl(var(--primary) / 0.3); }
+        }
+      `}</style>
 
-      {/* Pulsing arrow pointer */}
-      {step.highlightArea && (
-        <div
-          className="absolute z-[101] animate-bounce"
-          style={{
-            top: `calc(${step.highlightArea.top} + ${step.highlightArea.height} / 2 - 20px)`,
-            left: `calc(${step.highlightArea.left} + ${step.highlightArea.width} + 20px)`,
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg animate-pulse">
-              <MousePointer2 className="w-4 h-4 text-primary-foreground -rotate-45" />
-            </div>
-            <span className="text-sm font-medium text-primary bg-card/90 px-3 py-1 rounded-full shadow-lg">
-              {step.action || "Click here"}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Tutorial Card */}
-      <div className={`absolute ${getTooltipPosition()} z-[102] w-full max-w-sm px-4`}>
-        <div className="bg-card rounded-3xl border border-border shadow-elevated overflow-hidden animate-fade-up">
+      {/* Tutorial Card - floating, doesn't block UI */}
+      <div className={`${getTooltipPosition()} z-[100] w-full max-w-sm px-4 pointer-events-auto`}>
+        <div className="bg-card rounded-2xl border border-primary/30 shadow-xl overflow-hidden animate-fade-up">
           {/* Progress bar */}
           <div className="h-1 bg-muted">
             <div 
@@ -227,14 +221,14 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-5">
             {/* Header with icon */}
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                 {step.icon}
               </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-semibold text-foreground mb-1">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-semibold text-foreground mb-1">
                   {step.title}
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -243,66 +237,58 @@ export const Tutorial = ({ onComplete }: TutorialProps) => {
               </div>
             </div>
 
-            {/* Step counter */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-1.5">
-                {tutorialSteps.map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === currentStep 
-                        ? "bg-primary w-6" 
-                        : i < currentStep 
-                          ? "bg-primary/50 w-1.5" 
-                          : "bg-muted w-1.5"
-                    }`}
-                  />
-                ))}
+            {/* Action hint */}
+            {step.action && (
+              <div className="mb-4 p-2 bg-primary/10 rounded-lg">
+                <p className="text-sm font-medium text-primary text-center">
+                  {step.action}
+                </p>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {currentStep + 1} / {tutorialSteps.length}
-              </span>
-            </div>
+            )}
 
-            {/* Actions */}
+            {/* Footer */}
             <div className="flex items-center justify-between">
-              <button
-                onClick={handleSkip}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Skip tutorial
-              </button>
-              <Button variant="hero" size="sm" onClick={handleNext}>
-                {isLastStep ? (
-                  <>
-                    Get Started
-                    <Rocket className="w-4 h-4 ml-2" />
-                  </>
-                ) : (
-                  <>
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {currentStep + 1} of {tutorialSteps.length}
+                </span>
+                <div className="flex gap-1">
+                  {tutorialSteps.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1 rounded-full transition-all ${
+                        i === currentStep 
+                          ? "bg-primary w-4" 
+                          : i < currentStep 
+                            ? "bg-primary/50 w-1" 
+                            : "bg-muted w-1"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleComplete}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+                >
+                  Skip
+                </button>
+                <Button variant="hero" size="sm" onClick={handleNext}>
+                  {isLastStep ? "Start" : "Next"}
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Keyboard hint */}
-        <p className="text-center text-xs text-muted-foreground/60 mt-3">
-          Press <kbd className="px-1.5 py-0.5 bg-card rounded text-xs border">Enter</kbd> or <kbd className="px-1.5 py-0.5 bg-card rounded text-xs border">→</kbd> to continue
+        <p className="text-center text-xs text-muted-foreground/50 mt-2">
+          Press Enter or → to continue • Esc to skip
         </p>
       </div>
-
-      {/* Skip button (always visible) */}
-      <button
-        onClick={handleSkip}
-        className="absolute top-4 right-4 z-[103] p-2 bg-card/80 backdrop-blur-sm rounded-full text-muted-foreground hover:text-foreground transition-colors border border-border/50"
-      >
-        <X className="w-5 h-5" />
-      </button>
-    </div>
+    </>
   );
 };
 

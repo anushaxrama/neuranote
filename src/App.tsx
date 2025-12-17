@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Notes from "./pages/Notes";
@@ -17,53 +17,29 @@ import { Tutorial } from "./components/Tutorial";
 
 const queryClient = new QueryClient();
 
-const AppContent = () => {
+const TutorialWrapper = () => {
   const [showTutorial, setShowTutorial] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
+    // Only show tutorial on app pages (not landing page "/")
+    const isAppPage = location.pathname !== "/" && location.pathname !== "/about";
     const tutorialComplete = localStorage.getItem("neuranoteTutorialComplete");
-    // Only show tutorial on dashboard or app pages, not landing
-    const isAppPage = window.location.pathname !== "/";
-    setShowTutorial(!tutorialComplete && isAppPage);
-    setIsLoading(false);
-  }, []);
-
-  // Check when navigating to dashboard
-  useEffect(() => {
-    const handleNavigation = () => {
-      const tutorialComplete = localStorage.getItem("neuranoteTutorialComplete");
-      const isAppPage = window.location.pathname !== "/";
-      if (!tutorialComplete && isAppPage && !showTutorial) {
-        setShowTutorial(true);
-      }
-    };
-
-    window.addEventListener("popstate", handleNavigation);
-    return () => window.removeEventListener("popstate", handleNavigation);
-  }, [showTutorial]);
+    
+    if (isAppPage && !tutorialComplete) {
+      setShowTutorial(true);
+    } else {
+      setShowTutorial(false);
+    }
+  }, [location.pathname]);
 
   const completeTutorial = () => {
     setShowTutorial(false);
   };
 
-  return (
-    <>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/notes" element={<Notes />} />
-        <Route path="/concept-map" element={<ConceptMap />} />
-        <Route path="/review" element={<Review />} />
-        <Route path="/insights" element={<Insights />} />
-        <Route path="/settings" element={<AppSettings />} />
-        <Route path="/about" element={<About />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      {showTutorial && !isLoading && <Tutorial onComplete={completeTutorial} />}
-    </>
-  );
+  if (!showTutorial) return null;
+
+  return <Tutorial onComplete={completeTutorial} />;
 };
 
 const App = () => (
@@ -72,7 +48,19 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppContent />
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/notes" element={<Notes />} />
+          <Route path="/concept-map" element={<ConceptMap />} />
+          <Route path="/review" element={<Review />} />
+          <Route path="/insights" element={<Insights />} />
+          <Route path="/settings" element={<AppSettings />} />
+          <Route path="/about" element={<About />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <TutorialWrapper />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
