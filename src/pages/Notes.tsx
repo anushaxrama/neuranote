@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   Plus, Sparkles, X, Save, Loader2, Lightbulb, BookOpen,
-  PenLine
+  PenLine, CheckCircle2, Network
 } from "lucide-react";
 import { extractConcepts, summarizeNote, generateExplanationPrompt } from "@/lib/openai";
 import { Sidebar } from "@/components/Sidebar";
@@ -32,6 +33,7 @@ const saveNotes = (notes: Note[]) => {
 };
 
 const Notes = () => {
+  const navigate = useNavigate();
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -43,6 +45,8 @@ const Notes = () => {
   const [summary, setSummary] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   // Load notes from localStorage on mount
   useEffect(() => {
@@ -57,8 +61,10 @@ const Notes = () => {
     try {
       const concepts = await extractConcepts(content);
       setExtractedConcepts(concepts);
+      return concepts;
     } catch (error) {
       console.error("Error extracting concepts:", error);
+      return [];
     } finally {
       setIsExtracting(false);
     }
@@ -91,14 +97,29 @@ const Notes = () => {
     }
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     if (!newNoteTitle.trim() || !newNoteContent.trim()) return;
+
+    setIsSaving(true);
+
+    // Auto-extract concepts if none have been extracted yet
+    let conceptsToSave = extractedConcepts;
+    if (conceptsToSave.length === 0) {
+      try {
+        const extracted = await extractConcepts(newNoteContent);
+        conceptsToSave = extracted;
+        setExtractedConcepts(extracted);
+      } catch (error) {
+        console.error("Error auto-extracting concepts:", error);
+        // Continue with empty concepts if extraction fails
+      }
+    }
 
     const newNote: Note = {
       id: Date.now().toString(),
       title: newNoteTitle,
       content: newNoteContent,
-      concepts: extractedConcepts,
+      concepts: conceptsToSave,
       summary: summary || undefined,
       updated: "Just now",
       createdAt: Date.now(),
@@ -108,11 +129,18 @@ const Notes = () => {
     setNotes(updatedNotes);
     saveNotes(updatedNotes);
     
-    setIsCreating(false);
-    setNewNoteTitle("");
-    setNewNoteContent("");
-    setExtractedConcepts([]);
-    setSummary("");
+    setIsSaving(false);
+    setShowSaveSuccess(true);
+
+    // Hide success message after 3 seconds
+    setTimeout(() => {
+      setShowSaveSuccess(false);
+      setIsCreating(false);
+      setNewNoteTitle("");
+      setNewNoteContent("");
+      setExtractedConcepts([]);
+      setSummary("");
+    }, 2000);
   };
 
   const handleDeleteNote = (noteId: string) => {
@@ -130,6 +158,7 @@ const Notes = () => {
     setExtractedConcepts([]);
     setSummary("");
     setAiPrompt("");
+    setShowSaveSuccess(false);
   };
 
   const formatTimeAgo = (timestamp: number) => {
@@ -242,14 +271,24 @@ const Notes = () => {
                     ))}
                   </div>
 
-                  {/* AI Suggestion */}
-                  <div className="mt-8 p-6 bg-accent/30 rounded-3xl border border-accent/50">
-                    <div className="flex items-start gap-3">
-                      <Lightbulb className="w-5 h-5 text-primary mt-0.5" />
-                      <p className="text-sm text-muted-foreground">
-                        <span className="text-foreground font-medium">AI Tip:</span> When you create a note, 
-                        I can automatically extract key concepts and create a summary to help you learn better!
-                      </p>
+                  {/* View Concept Map CTA */}
+                  <div className="mt-8 p-6 bg-sage/10 rounded-3xl border border-sage/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-start gap-3">
+                        <Network className="w-5 h-5 text-sage mt-0.5" />
+                        <div>
+                          <p className="text-foreground font-medium">
+                            You have {notes.reduce((acc, n) => acc + n.concepts.length, 0)} concepts from {notes.length} notes
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            See how they connect in your Concept Map!
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="soft" onClick={() => navigate("/concept-map")}>
+                        <Network className="w-4 h-4 mr-2" />
+                        View Map
+                      </Button>
                     </div>
                   </div>
                 </>
@@ -258,6 +297,29 @@ const Notes = () => {
           ) : (
             /* Note Editor */
             <div className="space-y-6">
+              {/* Success Message */}
+              {showSaveSuccess && (
+                <div className="fixed top-4 right-4 z-50 animate-fade-up">
+                  <div className="bg-sage text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <div>
+                      <p className="font-medium">Note Saved!</p>
+                      <p className="text-sm opacity-90">
+                        {extractedConcepts.length} concepts added to your map
+                      </p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-white hover:bg-white/20 ml-2"
+                      onClick={() => navigate("/concept-map")}
+                    >
+                      View Map →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold text-foreground">
                   {isCreating ? "Create New Note" : selectedNote?.title}
@@ -334,14 +396,33 @@ Try writing about:
                       <Button 
                         variant="hero" 
                         onClick={handleSaveNote}
-                        disabled={!newNoteTitle.trim() || !newNoteContent.trim()}
+                        disabled={!newNoteTitle.trim() || !newNoteContent.trim() || isSaving}
                         className="ml-auto"
                       >
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Note
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4 mr-2" />
+                            Save Note
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
+
+                  {/* Hint about auto-extraction */}
+                  {isCreating && extractedConcepts.length === 0 && newNoteContent.length > 50 && (
+                    <div className="p-3 bg-accent/30 rounded-xl">
+                      <p className="text-sm text-muted-foreground">
+                        <Lightbulb className="w-4 h-4 inline mr-1 text-primary" />
+                        Tip: Click "Extract Concepts" to see key ideas, or just save and we'll extract them automatically!
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* AI Panel */}
@@ -362,7 +443,7 @@ Try writing about:
                     <div className="p-4 bg-card rounded-2xl border border-border/50">
                       <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-primary" />
-                        Key Concepts
+                        Key Concepts ({extractedConcepts.length})
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {extractedConcepts.map((concept) => (
@@ -376,7 +457,7 @@ Try writing about:
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground mt-3">
-                        Click a concept to get an explanation prompt
+                        These will appear in your Concept Map when you save!
                       </p>
                     </div>
                   )}
@@ -406,6 +487,21 @@ Try writing about:
                       <p className="text-sm text-muted-foreground">
                         Write some content, then use AI to extract concepts and create summaries
                       </p>
+                    </div>
+                  )}
+
+                  {/* Concept Map hint */}
+                  {isCreating && extractedConcepts.length > 0 && (
+                    <div className="p-4 bg-sage/10 rounded-2xl border border-sage/30">
+                      <div className="flex items-start gap-2">
+                        <Network className="w-4 h-4 text-sage mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Ready for your Concept Map!</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Save this note to see these {extractedConcepts.length} concepts visualized with AI-discovered connections.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
