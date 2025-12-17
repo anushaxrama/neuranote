@@ -93,7 +93,8 @@ export default {
         "3xl": "2rem",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["DM Sans", "system-ui", "sans-serif"],
+        serif: ["Instrument Serif", "Georgia", "serif"],
       },
       lineHeight: {
         relaxed: "1.75",

@@ -4,38 +4,63 @@ import { ArrowRight } from "lucide-react";
 
 export const CallToAction = () => {
   return (
-    <section className="py-24 px-6 bg-background relative overflow-hidden">
-      {/* Soft gradient orb */}
-      <div 
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-30 pointer-events-none"
-        style={{
-          background: "radial-gradient(circle at center, hsl(240 45% 85% / 0.5), hsl(210 35% 92% / 0.3), transparent 70%)",
-        }}
-      />
-
-      <div className="max-w-2xl mx-auto text-center relative z-10">
-        {/* Gentle headline */}
-        <h2 className="text-3xl md:text-4xl font-semibold text-foreground mb-4">
-          Ready when you are
-        </h2>
+    <section className="relative overflow-hidden">
+      {/* Vibrant gradient background - Embla style */}
+      <div className="relative h-[500px] md:h-[600px]">
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(135deg, hsl(320 75% 75%) 0%, hsl(35 95% 65%) 40%, hsl(280 65% 60%) 100%)',
+          }}
+        />
         
-        <p className="text-muted-foreground mb-10 leading-relaxed">
-          Start with a single thought. Build from there. There's no rush, 
-          no pressure — just you and your ideas, growing together.
-        </p>
+        {/* Overlay pattern */}
+        <div 
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: `radial-gradient(circle at 20% 80%, hsl(350 80% 60% / 0.4) 0%, transparent 50%),
+                              radial-gradient(circle at 80% 20%, hsl(40 90% 70% / 0.3) 0%, transparent 40%)`,
+          }}
+        />
 
-        {/* CTA */}
-        <Link to="/dashboard">
-          <Button variant="hero" size="xl" className="group">
-            Begin your journey
-            <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-          </Button>
-        </Link>
+        {/* Content */}
+        <div className="relative z-10 h-full flex items-end pb-16 md:pb-24">
+          <div className="max-w-6xl mx-auto px-6 w-full">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8">
+              <div>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white leading-tight mb-4">
+                  Ready to transform<br />
+                  <span className="font-serif italic">your workflow?</span>
+                </h2>
+                <p className="text-white/80 max-w-md">
+                  Join thousands of professionals who have already discovered a calmer, 
+                  more focused way to work.
+                </p>
+              </div>
+              
+              <Link to="/dashboard">
+                <Button 
+                  variant="outline" 
+                  size="xl" 
+                  className="bg-white text-foreground border-white hover:bg-white/90 hover:text-foreground group"
+                >
+                  Get Started Free
+                  <ArrowRight className="w-5 h-5 ml-1 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
 
-        {/* Reassurance */}
-        <p className="mt-8 text-sm text-muted-foreground/60">
-          Free forever for personal use • No credit card needed
-        </p>
+        {/* Person silhouette / decorative element */}
+        <div 
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-64 md:h-80"
+          style={{
+            background: 'linear-gradient(to top, hsl(280 50% 30% / 0.3), transparent)',
+            maskImage: 'linear-gradient(to top, black 0%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to top, black 0%, transparent 100%)',
+          }}
+        />
       </div>
     </section>
   );
