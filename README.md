@@ -1,73 +1,53 @@
-# Welcome to your Lovable project
+# NeuraNote
 
-## Project info
+NeuraNote explores a study workflow built around understanding and revisiting ideas. Instead of ending at a saved note, the interface connects note-taking with concept extraction, a concept map, review questions, and learning reflections.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This is a learning-product concept implemented as a React application. Its visual language uses soft color, floating concept bubbles, and a calmer dashboard to make returning to study feel manageable.
 
-## How can I edit this code?
+## What to explore
 
-There are several ways of editing your application.
+- **Notes:** write material, extract concepts, and request a summary.
+- **Concept map:** explore the ideas collected from notes.
+- **Review:** work through recall questions and feedback.
+- **Insights:** inspect learning progress and suggested focus areas.
+- **Supporting pages:** onboarding guidance, settings, the learning approach, and pricing concepts.
 
-**Use Lovable**
+These screens demonstrate the intended experience. They do not establish measured improvements in memory or learning outcomes.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Run the interface locally
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Use Node.js and npm:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+git clone https://github.com/anushaxrama/neuranote.git
+cd neuranote
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open the local URL printed by Vite.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build
+npm run lint
+npm run preview
+```
 
-**Use GitHub Codespaces**
+## AI integration and current limitation
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+`src/lib/openai.ts` contains requests for concept extraction, summaries, review questions, feedback, insights, and concept connections. The current implementation reads `VITE_OPENAI_API_KEY` and calls the provider from the browser.
 
-## What technologies are used for this project?
+Vite exposes `VITE_*` values to browser code. Do not put a real API secret into a publicly deployed build. The interface can be inspected without configuring a key, but AI actions require the integration. A hosted version needs a server-side endpoint, secret storage, and request limits before enabling these calls for visitors.
 
-This project is built with:
+## Code guide
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Location | Responsibility |
+| --- | --- |
+| `src/pages/Notes.tsx` | Note editing and concept extraction flow |
+| `src/pages/ConceptMap.tsx` | Concept visualization |
+| `src/pages/Review.tsx` | Review experience |
+| `src/pages/Insights.tsx` | Learning feedback screen |
+| `src/lib/openai.ts` | Provider requests and response parsing |
+| `src/components/` | Shared navigation, tutorial, and UI components |
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Built with React, TypeScript, Vite, React Router, Tailwind CSS, and shadcn/ui components. The project began in Lovable; this repository contains the application source.
