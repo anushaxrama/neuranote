@@ -50,4 +50,4 @@ Vite exposes `VITE_*` values to browser code. Do not put a real API secret into 
 | `src/lib/openai.ts` | Provider requests and response parsing |
 | `src/components/` | Shared navigation, tutorial, and UI components |
 
-Built with React, TypeScript, Vite, React Router, Tailwind CSS, and shadcn/ui components. The project began in Lovable; this repository contains the application source.
+Built with React, TypeScript, Vite, React Router, Tailwind CSS, and shadcn/ui components.
